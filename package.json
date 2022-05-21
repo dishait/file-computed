@@ -1,13 +1,13 @@
 {
 	"version": "0.0.0",
-	"name": "name",
-	"description": "description",
+	"name": "file-computed",
+	"description": "文件型计算属性，当且仅当文件变化时才重新做计算",
 	"main": "./dist/index.js",
 	"module": "./dist/index.mjs",
 	"types": "./dist/index.d.ts",
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/name/repo.git"
+		"url": "git+https://github.com/dishait/file-computed.git"
 	},
 	"exports": {
 		".": {
@@ -23,7 +23,6 @@
 		"build": "tsup",
 		"test": "vitest",
 		"dev": "esno src/index.ts",
-		"play": "esno demo/index.ts",
 		"test:watch": "vitest --watch",
 		"coverage": "vitest --coverage",
 		"prepublishOnly": "npm run build",
@@ -34,16 +33,18 @@
 		"lib",
 		"tool",
 		"node",
-		"utils"
+		"file",
+		"utils",
+		"computed"
 	],
 	"author": {
-		"name": "name",
-		"email": "xx@xx.com",
-		"url": "https://github.com/name"
+		"name": "markthree",
+		"email": "1801982702@qq.com",
+		"url": "https://github.com/markthree"
 	},
 	"bugs": {
-		"email": "xx@xx.com",
-		"url": "https://github.com/name/repo/issues"
+		"email": "1801982702@qq.com",
+		"url": "https://github.com/dishait/file-computed/issues"
 	},
 	"license": "MIT",
 	"devDependencies": {
