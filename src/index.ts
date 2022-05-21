@@ -1,1 +1,2 @@
-export { storage } from './storage'
+export * from './path'
+export * from './storage'
