@@ -6,9 +6,9 @@ import type {
 	PromisedReturnType
 } from './type'
 import {
-	cacheHashInTwice,
-	cacheReadFileInTwice,
-	cacheGetFileModifyTimeStampInTwice
+	cacheHashOnce,
+	cacheReadFileOnce,
+	cacheGetFileModifyTimeStampOnce
 } from './cache'
 
 interface ICreateFsComputed {
@@ -46,18 +46,18 @@ export function createFsComputed(
 		}
 
 		// 设置计算函数的 hash
-		await storage.setItem(keys.fnhash, cacheHashInTwice(fn))
+		await storage.setItem(keys.fnhash, cacheHashOnce(fn))
 
 		// 设置文件更新的时间戳
 		await storage.setItem(
 			keys.mtime,
-			cacheGetFileModifyTimeStampInTwice(filePath)
+			cacheGetFileModifyTimeStampOnce(filePath)
 		)
 
 		// 设置目标文件的 hash
 		await storage.setItem(
 			keys.filehash,
-			cacheHashInTwice(cacheReadFileInTwice(filePath))
+			cacheHashOnce(cacheReadFileOnce(filePath))
 		)
 
 		// 计算结果
@@ -86,7 +86,7 @@ export const notChanged = async (
 	const { keys, storage, filePath, fn } = options
 	// 检查计算函数是否有变
 	const lastFnhash = await storage.getItem(keys.fnhash)
-	const nowFnhash = cacheHashInTwice(fn)
+	const nowFnhash = cacheHashOnce(fn)
 	if (nowFnhash !== lastFnhash) {
 		return false
 	}
@@ -94,13 +94,13 @@ export const notChanged = async (
 	// 检查更新时间是否有变
 	const lastModifyTime = await storage.getItem(keys.mtime)
 	const nowModifyTime =
-		cacheGetFileModifyTimeStampInTwice(filePath).toString()
+		cacheGetFileModifyTimeStampOnce(filePath).toString()
 	if (nowModifyTime !== lastModifyTime) {
 		// 如果更新时间变了，再检查目标文件是不是真的变了
 		const lastFilehash = await storage.getItem(
 			keys.filehash
 		)
-		const fileBuffer = await cacheReadFileInTwice(filePath)
+		const fileBuffer = await cacheReadFileOnce(filePath)
 		const nowFilehash = hash(fileBuffer.toString())
 		if (nowFilehash !== lastFilehash) {
 			return false

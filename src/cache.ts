@@ -3,14 +3,15 @@ import { readFile } from 'fs/promises'
 import type { AnyFunction } from './type'
 import { getFileModifyTimeStamp } from './fs'
 
-export const createCacheInTimes = <T extends AnyFunction>(
-	counter = 0,
+export const createCacheOnce = <T extends AnyFunction>(
 	fn: T
 ) => {
+	let counter = 1
 	let result
 	return ((...args) => {
-		if (counter === 0 || result === undefined) {
+		if (counter <= 0 || result === undefined) {
 			result = fn(...args)
+			counter = 1
 			return result
 		}
 		counter--
@@ -18,12 +19,9 @@ export const createCacheInTimes = <T extends AnyFunction>(
 	}) as T
 }
 
-export const cacheReadFileInTwice = createCacheInTimes(
-	2,
-	readFile
-)
+export const cacheReadFileOnce = createCacheOnce(readFile)
 
-export const cacheGetFileModifyTimeStampInTwice =
-	createCacheInTimes(2, getFileModifyTimeStamp)
+export const cacheGetFileModifyTimeStampOnce =
+	createCacheOnce(getFileModifyTimeStamp)
 
-export const cacheHashInTwice = createCacheInTimes(2, hash)
+export const cacheHashOnce = createCacheOnce(hash)
