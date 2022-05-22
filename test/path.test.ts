@@ -3,7 +3,7 @@ import {
 	slash,
 	normalizePath,
 	createCachePath
-} from '../src/path'
+} from '../src'
 
 describe('path', () => {
 	it('slash', () => {

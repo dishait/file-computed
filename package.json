@@ -53,10 +53,13 @@
 		"bumpp": "^7.1.1",
 		"c8": "^7.11.3",
 		"esno": "^0.14.1",
-		"find-up": "^6.3.0",
 		"tsup": "^5.12.8",
 		"typescript": "^4.6.4",
-		"unstorage": "^0.4.1",
-		"vitest": "^0.1.27"
+		"vitest": "^0.1.27",
+		"find-up": "^6.3.0"
+	},
+	"dependencies": {
+		"ohash": "^0.1.0",
+		"unstorage": "^0.4.1"
 	}
 }

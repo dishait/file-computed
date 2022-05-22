@@ -5,7 +5,8 @@
 		"incremental": true,
 		"types": ["vitest"],
 		"skipLibCheck": true,
-		"moduleResolution": "node"
+		"moduleResolution": "node",
+		"tsBuildInfoFile": ".tsbuildinfo"
 	},
 	"include": ["src"],
 	"exclude": ["dist", "node_modules"]

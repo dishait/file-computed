@@ -1,5 +1,5 @@
+import { createFsStorage } from '../src'
 import { describe, expect, it } from 'vitest'
-import { createFsStorage } from '../src/storage'
 
 describe('storage', () => {
 	it('basic', async () => {
