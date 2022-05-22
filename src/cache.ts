@@ -1,8 +1,8 @@
 import { AnyFunction } from './type'
 
-export const createCacheFn = <T extends AnyFunction>(
+export function createCacheFn<T extends AnyFunction>(
 	fn: T
-) => {
+) {
 	let result
 	return ((...args) => {
 		if (result) {

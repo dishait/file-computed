@@ -1,13 +1,10 @@
 import { hash } from 'ohash'
 import { readFile } from 'fs/promises'
-import type { Storage } from 'unstorage'
-import { createFsStorage } from './storage'
 import { createCacheFn } from './cache'
+import type { Storage } from 'unstorage'
+import type { AnyFunction } from './type'
+import { createFsStorage } from './storage'
 import { getFileModifyTimeStamp } from './fs'
-import type {
-	AnyFunction,
-	PromisedReturnType
-} from './type'
 
 interface ICreateFsComputed {
 	cachePath?: string
@@ -21,7 +18,7 @@ export function createFsComputed(
 	return async <T extends AnyFunction>(
 		filePath: string,
 		fn: T
-	): PromisedReturnType<T> => {
+	) => {
 		const keys = createKeys(filePath)
 		const effects = createCacheEffects(filePath, fn)
 
@@ -62,17 +59,8 @@ export function createFsComputed(
 
 interface INotChangedOptions {
 	storage: Storage
-	effects: {
-		hashFn: () => string
-		hashFile: () => Promise<string>
-		readFile: () => Promise<Buffer>
-		getFileModifyTimeStamp: () => number
-	}
-	keys: {
-		mtime: string
-		fnhash: string
-		filehash: string
-	}
+	keys: ReturnType<typeof createKeys>
+	effects: ReturnType<typeof createCacheEffects>
 }
 
 export const notChanged = async (
@@ -99,7 +87,6 @@ export const notChanged = async (
 			return false
 		}
 	}
-
 	return true
 }
 
