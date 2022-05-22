@@ -1,27 +1,14 @@
-import { hash } from 'ohash'
-import { readFile } from 'fs/promises'
-import type { AnyFunction } from './type'
-import { getFileModifyTimeStamp } from './fs'
+import { AnyFunction } from './type'
 
-export const createCacheOnce = <T extends AnyFunction>(
+export const createCacheFn = <T extends AnyFunction>(
 	fn: T
 ) => {
-	let counter = 1
 	let result
 	return ((...args) => {
-		if (counter <= 0 || result === undefined) {
-			result = fn(...args)
-			counter = 1
+		if (result) {
 			return result
 		}
-		counter--
+		result = fn(...args)
 		return result
 	}) as T
 }
-
-export const cacheReadFileOnce = createCacheOnce(readFile)
-
-export const cacheGetFileModifyTimeStampOnce =
-	createCacheOnce(getFileModifyTimeStamp)
-
-export const cacheHashOnce = createCacheOnce(hash)

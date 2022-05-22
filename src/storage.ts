@@ -3,9 +3,11 @@ import { createStorage } from 'unstorage'
 // @ts-ignore
 import fsDriver from 'unstorage/drivers/fs'
 
-export const createFsStorage = (cachePath?: string) => {
+export function createFsStorage(cachePath?: string) {
 	const storage = createStorage({
-		driver: fsDriver({ base: createCachePath(cachePath) })
+		driver: fsDriver({
+			base: createCachePath(cachePath)
+		})
 	})
 
 	process.once('beforeExit', async () => {

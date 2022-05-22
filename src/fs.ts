@@ -1,8 +1,6 @@
 import { lstatSync } from 'fs'
 
-export const getFileModifyTimeStamp = (
-	filePath: string
-) => {
+export function getFileModifyTimeStamp(filePath: string) {
 	try {
 		const { mtime } = lstatSync(filePath)
 		return mtime.getTime()

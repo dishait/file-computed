@@ -1,15 +1,13 @@
 import { hash } from 'ohash'
+import { readFile } from 'fs/promises'
 import type { Storage } from 'unstorage'
 import { createFsStorage } from './storage'
+import { createCacheFn } from './cache'
+import { getFileModifyTimeStamp } from './fs'
 import type {
 	AnyFunction,
 	PromisedReturnType
 } from './type'
-import {
-	cacheHashOnce,
-	cacheReadFileOnce,
-	cacheGetFileModifyTimeStampOnce
-} from './cache'
 
 interface ICreateFsComputed {
 	cachePath?: string
@@ -24,19 +22,14 @@ export function createFsComputed(
 		filePath: string,
 		fn: T
 	): PromisedReturnType<T> => {
-		const keys = {
-			mtime: filePath + ':mtime',
-			fnhash: filePath + ':fnhash',
-			result: filePath + ':result',
-			filehash: filePath + ':filehash'
-		}
+		const keys = createKeys(filePath)
+		const effects = createCacheEffects(filePath, fn)
 
 		// 是否无变化
 		const isNotChanged = await notChanged({
-			fn,
 			keys,
 			storage,
-			filePath
+			effects
 		})
 
 		// 无变化时返回上一次的结果
@@ -46,19 +39,17 @@ export function createFsComputed(
 		}
 
 		// 设置计算函数的 hash
-		await storage.setItem(keys.fnhash, cacheHashOnce(fn))
+		await storage.setItem(keys.fnhash, effects.hashFn())
 
 		// 设置文件更新的时间戳
 		await storage.setItem(
 			keys.mtime,
-			cacheGetFileModifyTimeStampOnce(filePath)
+			effects.getFileModifyTimeStamp()
 		)
 
 		// 设置目标文件的 hash
-		await storage.setItem(
-			keys.filehash,
-			cacheHashOnce(cacheReadFileOnce(filePath))
-		)
+		const fileHash = await effects.hashFile()
+		await storage.setItem(keys.filehash, fileHash)
 
 		// 计算结果
 		const nowResult = fn() as ReturnType<T>
@@ -70,9 +61,13 @@ export function createFsComputed(
 }
 
 interface INotChangedOptions {
-	fn: Function
-	filePath: string
 	storage: Storage
+	effects: {
+		hashFn: () => string
+		hashFile: () => Promise<string>
+		readFile: () => Promise<Buffer>
+		getFileModifyTimeStamp: () => number
+	}
 	keys: {
 		mtime: string
 		fnhash: string
@@ -83,29 +78,61 @@ interface INotChangedOptions {
 export const notChanged = async (
 	options: INotChangedOptions
 ) => {
-	const { keys, storage, filePath, fn } = options
+	const { keys, storage, effects } = options
 	// 检查计算函数是否有变
 	const lastFnhash = await storage.getItem(keys.fnhash)
-	const nowFnhash = cacheHashOnce(fn)
+	const nowFnhash = effects.hashFn()
 	if (nowFnhash !== lastFnhash) {
 		return false
 	}
 
 	// 检查更新时间是否有变
 	const lastModifyTime = await storage.getItem(keys.mtime)
-	const nowModifyTime =
-		cacheGetFileModifyTimeStampOnce(filePath).toString()
+	const nowModifyTime = effects.getFileModifyTimeStamp()
 	if (nowModifyTime !== lastModifyTime) {
 		// 如果更新时间变了，再检查目标文件是不是真的变了
 		const lastFilehash = await storage.getItem(
 			keys.filehash
 		)
-		const fileBuffer = await cacheReadFileOnce(filePath)
-		const nowFilehash = hash(fileBuffer.toString())
+		const nowFilehash = await effects.hashFile()
 		if (nowFilehash !== lastFilehash) {
 			return false
 		}
 	}
 
 	return true
+}
+
+export const createKeys = (filePath: string) => {
+	return {
+		mtime: filePath + ':mtime',
+		fnhash: filePath + ':fnhash',
+		result: filePath + ':result',
+		filehash: filePath + ':filehash'
+	}
+}
+
+export const createCacheEffects = <T extends AnyFunction>(
+	filePath: string,
+	fn: T
+) => {
+	const readFileEffect = createCacheFn(() => {
+		return readFile(filePath)
+	})
+
+	const effects = {
+		readFile: readFileEffect,
+		hashFn: createCacheFn(() => {
+			return hash(fn)
+		}),
+		hashFile: createCacheFn(async () => {
+			const file = await readFileEffect()
+			return hash(file)
+		}),
+		getFileModifyTimeStamp: createCacheFn(() => {
+			return getFileModifyTimeStamp(filePath)
+		})
+	}
+
+	return effects
 }
