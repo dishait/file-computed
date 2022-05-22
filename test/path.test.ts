@@ -26,9 +26,9 @@ describe('path', () => {
 	})
 
 	it('createCachePath', () => {
-		// default to ./node_modules/@file-computed-temp
+		// default to ./node_modules/.file-computed
 		expect(createCachePath()).toMatchInlineSnapshot(
-			'"D:/Code/Work/file-computed/node_modules/@file-computed-temp"'
+			'"D:/Code/Work/file-computed/node_modules/.file-computed"'
 		)
 
 		// of course, other paths are also supported

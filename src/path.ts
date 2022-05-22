@@ -14,10 +14,7 @@ export function createCachePath(target?: string) {
 		const nodeModulesPath = findUpSync('node_modules', {
 			type: 'directory'
 		})
-		return normalizePath(
-			nodeModulesPath,
-			'@file-computed-temp'
-		)
+		return normalizePath(nodeModulesPath, '.file-computed')
 	}
 	return normalizePath(target)
 }

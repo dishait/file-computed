@@ -24,7 +24,7 @@ describe('createFsComputed', () => {
 			fn
 		)
 
-		expect(result1).toMatchInlineSnapshot('5')
-		expect(result2).toMatchInlineSnapshot('5')
+		expect(result1).toMatchInlineSnapshot('1')
+		expect(result2).toMatchInlineSnapshot('1')
 	})
 })
