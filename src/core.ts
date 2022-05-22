@@ -49,7 +49,7 @@ export function createFsComputed(
 		await storage.setItem(keys.filehash, fileHash)
 
 		// 计算结果
-		const nowResult = fn() as ReturnType<T>
+		const nowResult = (await fn()) as ReturnType<T>
 
 		await storage.setItem(keys.result, nowResult)
 
@@ -70,20 +70,20 @@ export const notChanged = async (
 	// 检查计算函数是否有变
 	const lastFnhash = await storage.getItem(keys.fnhash)
 	const nowFnhash = effects.hashFn()
-	if (nowFnhash !== lastFnhash) {
+	if (nowFnhash != lastFnhash) {
 		return false
 	}
 
 	// 检查更新时间是否有变
 	const lastModifyTime = await storage.getItem(keys.mtime)
 	const nowModifyTime = effects.getFileModifyTimeStamp()
-	if (nowModifyTime !== lastModifyTime) {
+	if (nowModifyTime != lastModifyTime) {
 		// 如果更新时间变了，再检查目标文件是不是真的变了
 		const lastFilehash = await storage.getItem(
 			keys.filehash
 		)
 		const nowFilehash = await effects.hashFile()
-		if (nowFilehash !== lastFilehash) {
+		if (nowFilehash != lastFilehash) {
 			return false
 		}
 	}
