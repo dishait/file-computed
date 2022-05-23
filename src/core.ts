@@ -21,10 +21,11 @@ export function createFsComputed(
 ) {
 	const { cachePath } = options
 	const storage = createFsStorage(cachePath)
-	return async <T extends AnyFunction>(
+
+	async function fsComputed<T extends AnyFunction>(
 		filePath: string,
 		fn: T
-	) => {
+	) {
 		const effects = createCacheEffects(filePath)
 
 		const fnhash = hash(fn)
@@ -60,6 +61,15 @@ export function createFsComputed(
 
 		return result
 	}
+
+	fsComputed.clear = async () => await storage.clear()
+
+	fsComputed.remove = async (
+		filePath: string,
+		fn: Function
+	) => await storage.removeItem(filePath + '/' + hash(fn))
+
+	return fsComputed
 }
 
 interface INotChangedOptions {

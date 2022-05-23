@@ -14,18 +14,8 @@ describe('createFsComputed', () => {
 			return n
 		}
 
-		const result1 = await fsComputed(
-			'examples/test.txt',
-			fn
-		)
+		const result = await fsComputed('examples/test.txt', fn)
 
-		const result2 = await fsComputed(
-			'examples/test.txt',
-			fn
-		)
-
-		expect(result1).toMatchInlineSnapshot('5')
-
-		expect(result2).toMatchInlineSnapshot('5')
+		expect(result).toMatchInlineSnapshot('4')
 	})
 })
