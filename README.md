@@ -1,6 +1,8 @@
-# file-computed
-
-文件型计算属性，当且仅当文件内容发生变化时才重新做计算
+<div align="center">
+    <img width="100%" height="100%" src="./file-computed.gif" />
+    <h1>file-computed</h1>
+    <p>文件型计算属性，当且仅当文件内容发生变化时才重新做计算</p>
+</div>
 
 <br />
 
