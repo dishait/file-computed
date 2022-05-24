@@ -16,6 +16,6 @@ describe('createFsComputed', () => {
 
 		const result = await fsComputed('examples/test.txt', fn)
 
-		expect(result).toMatchInlineSnapshot('4')
+		expect(result).toMatchInlineSnapshot('1')
 	})
 })

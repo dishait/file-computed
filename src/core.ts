@@ -55,7 +55,7 @@ export function createFsComputed(
 
 		await storage.setItem(key, {
 			lastResult: result,
-			lastFileHash: fileHash,
+			lastFilehash: fileHash,
 			lastModifyTime: modifyTime
 		})
 
@@ -96,6 +96,10 @@ export const notChanged = async (
 	if (nowModifyTime != lastModifyTime) {
 		// 如果更新时间变了，再检查目标文件是不是真的变了
 		const nowFilehash = await effects.hashFile()
+		console.log(typeof item)
+
+		console.log('nowFilehash', nowFilehash)
+		console.log('lastFilehash', lastFilehash)
 		if (nowFilehash != lastFilehash) {
 			return false
 		}
