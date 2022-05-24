@@ -5,6 +5,6 @@ describe('fs', () => {
 	it('getFileModifyTimeStamp', async () => {
 		expect(
 			getFileModifyTimeStamp('./package.json')
-		).toMatchInlineSnapshot('1653377338204')
+		).toMatchInlineSnapshot('1653380015277')
 	})
 })
