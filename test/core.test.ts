@@ -1,8 +1,19 @@
 import { describe, it, expect } from 'vitest'
-import { createFsComputed, createFsStorage } from '../src'
+import {
+	normalizePath,
+	createFsStorage,
+	createFsComputed,
+	createFsStorageSync,
+	createFsComputedSync
+} from '../src'
 
 describe('createFsComputed', () => {
 	const fsStorage = createFsStorage()
+	const syncCachePath = normalizePath(
+		'node_modules',
+		'.file-computed-sync'
+	)
+	const fsStorageSync = createFsStorageSync(syncCachePath)
 
 	it('basic', async () => {
 		const fsComputed = createFsComputed()
@@ -36,6 +47,27 @@ describe('createFsComputed', () => {
 			fn
 		)
 
-		expect(result).toMatchInlineSnapshot('2')
+		expect(result).toMatchInlineSnapshot('1')
+	})
+
+	it('sync', async () => {
+		const fsComputedSync = createFsComputedSync({
+			cachePath: syncCachePath
+		})
+
+		const fn = () => {
+			let n = (fsStorageSync.getItem('n3') as number) || 0
+			console.log('n', n)
+			n++
+			fsStorageSync.setItem('n3', n)
+			return n
+		}
+
+		const result = fsComputedSync(
+			['examples/foo.txt', 'examples/bar.txt'],
+			fn
+		)
+
+		expect(result).toMatchInlineSnapshot('1')
 	})
 })

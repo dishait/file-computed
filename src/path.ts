@@ -10,7 +10,7 @@ export function normalizePath(...paths: string[]) {
 	return slash(resolve(...paths))
 }
 
-const findUpDefaultCachePath = mem(function () {
+export const findUpDefaultCachePath = mem(function () {
 	const path = findUpSync('node_modules', {
 		type: 'directory'
 	})

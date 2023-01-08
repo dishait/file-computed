@@ -7,6 +7,7 @@ importers:
       '@types/node': ^18.11.18
       bumpp: ^8.2.1
       c8: ^7.12.0
+      destr: ^1.2.2
       esno: ^0.16.3
       find-up: ^6.3.0
       m-type-tools: ^0.4.0
@@ -17,6 +18,7 @@ importers:
       unstorage: ^1.0.1
       vitest: ^0.26.3
     dependencies:
+      destr: 1.2.2
       m-type-tools: 0.4.0
       ohash: 1.0.0
       unstorage: 1.0.1

@@ -1,7 +1,15 @@
+import destr from 'destr'
+import { ensureDirSync } from './fs'
 import { createStorage } from 'unstorage'
 // @ts-ignore
 import fsDriver from 'unstorage/drivers/fs'
-import { normalizeCachePath } from './path'
+import { normalizeCachePath, normalizePath } from './path'
+import {
+	rmSync,
+	existsSync,
+	readFileSync,
+	writeFileSync
+} from 'fs'
 
 export function createFsStorage(cachePath?: string) {
 	const storage = createStorage({
@@ -13,6 +21,42 @@ export function createFsStorage(cachePath?: string) {
 	process.once('beforeExit', async function () {
 		await storage.dispose()
 	})
+
+	return storage
+}
+
+export function createFsStorageSync(cachePath?: string) {
+	cachePath = normalizeCachePath(cachePath)
+	ensureDirSync(cachePath)
+
+	const storage = {
+		clear() {
+			rmSync(cachePath)
+		},
+		getItem(key: string) {
+			const path = normalizePath(cachePath, key)
+			if (!existsSync(path)) {
+				return null
+			}
+			const value = readFileSync(path)
+			if (value) {
+				return destr(value.toString())
+			}
+			return null
+		},
+		setItem(key: string, value: any) {
+			const path = normalizePath(cachePath, key)
+			writeFileSync(path, JSON.stringify(value))
+		},
+		removeItem(key: string) {
+			const path = normalizePath(cachePath, key)
+			if (existsSync(path)) {
+				rmSync(path)
+				return true
+			}
+			return false
+		}
+	}
 
 	return storage
 }

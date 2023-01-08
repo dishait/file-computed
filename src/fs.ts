@@ -1,7 +1,7 @@
 import mem from 'mem'
-import { lstatSync } from 'fs'
 import { lstat } from 'fs/promises'
 import { readFile as _readFile } from 'fs/promises'
+import { lstatSync, existsSync, mkdirSync } from 'fs'
 
 export function getFileModifyTimeStampSync(
 	filepath: string
@@ -18,3 +18,11 @@ export async function getFileModifyTimeStamp(
 }
 
 export const readFile = mem(_readFile)
+
+export function ensureDirSync(dirpath: string) {
+	if (!existsSync(dirpath)) {
+		mkdirSync(dirpath, {
+			recursive: true
+		})
+	}
+}
