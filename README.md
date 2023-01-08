@@ -6,7 +6,7 @@
 
 <br />
 
-## 动机 
+## 动机
 
 有时候我们的计算在特定目标文件不变时结果是一样的，当计算特别耗时复杂时可以通过本地文件缓存的方式快速得到原先的结果，而不需要每一次都进行该计算，以此提高运算效率。
 
@@ -31,13 +31,13 @@ import { createFsComputed } from 'file-computed'
 const fsComputed = createFsComputed()
 
 const result = await fsComputed('package.json', () => {
-    /** 模拟复杂计算，只会跑一次，后边会直接获取缓存中的结果 */
-    let n = 0
-    let t = 10000
-    while (t--) {
-        n++
-    }
-    return n
+	/** 模拟复杂计算，只会跑一次，后边会直接获取缓存中的结果 */
+	let n = 0
+	let t = 10000
+	while (t--) {
+		n++
+	}
+	return n
 })
 
 result // 10000
@@ -51,10 +51,31 @@ result // 10000
 import { createFsComputed } from 'file-computed'
 
 const fsComputed = createFsComputed({
-    cachePath: 'temp' // 默认为最近 node_modules 的 .file-computed
+	cachePath: 'temp' // 默认为最近 node_modules 的 .file-computed
 })
 ```
 
+<br />
+
+### 同步
+
+```ts
+import { createFsComputedSync } from 'file-computed'
+
+const fsComputed = createFsComputedSync()
+
+const result = fsComputed(() => {
+	/** 模拟复杂计算，只会跑一次，后边会直接获取缓存中的结果 */
+	let n = 0
+	let t = 10000
+	while (t--) {
+		n++
+	}
+	return n
+})
+
+result // 10000
+```
 
 <br />
 <br />
@@ -64,6 +85,5 @@ const fsComputed = createFsComputed({
 Made with [markthree](https://github.com/markthree)
 
 Published under [MIT License](./LICENSE).
-
 
 <br />
