@@ -1,16 +1,11 @@
 import mem from 'mem'
 import { isArray } from 'm-type-tools'
 import { createFsStorage } from './storage'
+import { isEqual, hash as _hash } from 'ohash'
 import { getFileModifyTimeStamp, readFile } from './fs'
 import type { MayBeArray, AnyFunction } from 'm-type-tools'
-import {
-	isEqual,
-	hash as _hash,
-	murmurHash as _murmurHash
-} from 'ohash'
 
 const hash = mem(_hash)
-const murmurHash = mem(_murmurHash)
 
 const parallel = Promise.all.bind(Promise)
 
@@ -82,7 +77,7 @@ export function createFsComputed(
 		}
 
 		const nowHash = await createHash()
-
+		// check hash
 		if (isEqual(nowHash, item.hash)) {
 			return item.result
 		}
