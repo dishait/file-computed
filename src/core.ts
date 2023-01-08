@@ -24,6 +24,7 @@ interface ICreateFsComputedOptions {
 interface IItem<R> {
 	result: R
 	hash: string
+	fnHash: string
 	modifyTimeStamps: number[]
 }
 
@@ -42,6 +43,8 @@ export function createFsComputed(
 		if (!isArray(paths)) {
 			paths = [paths]
 		}
+
+		const createFnHash = mem(() => hash(fn))
 
 		const createHash = mem(async function () {
 			const contents = await parallel(
@@ -68,6 +71,7 @@ export function createFsComputed(
 			const result = await createResult()
 			await storage.setItem(key, {
 				result,
+				fnHash: createFnHash(),
 				hash: await createHash(),
 				modifyTimeStamps: await createModifyTimeStamps()
 			} as Item)
@@ -75,6 +79,12 @@ export function createFsComputed(
 		}
 
 		if (!item) {
+			return refresh()
+		}
+
+		const fnHash = createFnHash()
+		// check fn
+		if (!isEqual(fnHash, item.fnHash)) {
 			return refresh()
 		}
 
@@ -120,6 +130,8 @@ export function createFsComputedSync(
 			paths = [paths]
 		}
 
+		const createFnHash = mem(() => hash(fn))
+
 		const createHash = mem(function () {
 			const contents = (paths as string[]).map(path =>
 				readFileSync(path)
@@ -144,12 +156,19 @@ export function createFsComputedSync(
 			storage.setItem(key, {
 				result,
 				hash: createHash(),
+				fnHash: createFnHash(),
 				modifyTimeStamps: createModifyTimeStamps()
 			} as Item)
 			return result
 		}
 
 		if (!item) {
+			return refresh()
+		}
+
+		const fnHash = createFnHash()
+		// check fn
+		if (!isEqual(fnHash, item.fnHash)) {
 			return refresh()
 		}
 
