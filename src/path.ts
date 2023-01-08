@@ -1,3 +1,4 @@
+import mem from 'mem'
 import { resolve } from 'path'
 import { findUpSync } from 'find-up'
 
@@ -9,12 +10,16 @@ export function normalizePath(...paths: string[]) {
 	return slash(resolve(...paths))
 }
 
-export function createCachePath(target?: string) {
-	if (!target) {
-		const nodeModulesPath = findUpSync('node_modules', {
-			type: 'directory'
-		})
-		return normalizePath(nodeModulesPath, '.file-computed')
+const findUpDefaultCachePath = mem(function () {
+	const path = findUpSync('node_modules', {
+		type: 'directory'
+	})
+	return normalizePath(path, '.file-computed')
+})
+
+export function normalizeCachePath(path?: string) {
+	if (!path) {
+		return findUpDefaultCachePath()
 	}
-	return normalizePath(target)
+	return normalizePath(path)
 }

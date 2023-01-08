@@ -1,20 +1,20 @@
+import mem from 'mem'
 import { lstatSync } from 'fs'
 import { lstat } from 'fs/promises'
+import { readFile as _readFile } from 'fs/promises'
 
 export function getFileModifyTimeStampSync(
-	filePath: string
+	filepath: string
 ) {
-	try {
-		const { mtime } = lstatSync(filePath)
-		return mtime.getTime()
-	} catch (error) {
-		throw error
-	}
+	const { mtime } = lstatSync(filepath)
+	return mtime.getTime()
 }
 
 export async function getFileModifyTimeStamp(
-	filePath: string
+	filepath: string
 ) {
-	const { mtime } = await lstat(filePath)
+	const { mtime } = await lstat(filepath)
 	return mtime.getTime()
 }
+
+export const readFile = mem(_readFile)

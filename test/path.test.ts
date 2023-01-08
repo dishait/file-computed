@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
 	slash,
 	normalizePath,
-	createCachePath
+	normalizeCachePath
 } from '../src'
 
 describe('path', () => {
@@ -25,14 +25,16 @@ describe('path', () => {
 		)
 	})
 
-	it('createCachePath', () => {
+	it('normalizeCachePath', () => {
 		// default to ./node_modules/.file-computed
-		expect(createCachePath()).toMatchInlineSnapshot(
+		expect(normalizeCachePath()).toMatchInlineSnapshot(
 			'"D:/Code/Work/file-computed/node_modules/.file-computed"'
 		)
 
 		// of course, other paths are also supported
-		expect(createCachePath('./temp')).toMatchInlineSnapshot(
+		expect(
+			normalizeCachePath('./temp')
+		).toMatchInlineSnapshot(
 			'"D:/Code/Work/file-computed/temp"'
 		)
 	})
