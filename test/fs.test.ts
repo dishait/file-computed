@@ -1,10 +1,19 @@
-import { getFileModifyTimeStamp } from '../src'
+import {
+	getFileModifyTimeStamp,
+	getFileModifyTimeStampSync
+} from '../src'
 import { describe, expect, it } from 'vitest'
 
 describe('fs', () => {
 	it('getFileModifyTimeStamp', async () => {
 		expect(
-			getFileModifyTimeStamp('./package.json')
-		).toMatchInlineSnapshot('1653380015277')
+			await getFileModifyTimeStamp('./package.json')
+		).toMatchInlineSnapshot('1672925909163')
+	})
+
+	it('getFileModifyTimeStampSync', () => {
+		expect(
+			getFileModifyTimeStampSync('./package.json')
+		).toMatchInlineSnapshot('1672925909163')
 	})
 })

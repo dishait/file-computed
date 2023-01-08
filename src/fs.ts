@@ -1,11 +1,20 @@
 import { lstatSync } from 'fs'
+import { lstat } from 'fs/promises'
 
-export function getFileModifyTimeStamp(filePath: string) {
+export function getFileModifyTimeStampSync(
+	filePath: string
+) {
 	try {
 		const { mtime } = lstatSync(filePath)
 		return mtime.getTime()
 	} catch (error) {
-		console.log('该文件不存在', error.message)
 		throw error
 	}
+}
+
+export async function getFileModifyTimeStamp(
+	filePath: string
+) {
+	const { mtime } = await lstat(filePath)
+	return mtime.getTime()
 }

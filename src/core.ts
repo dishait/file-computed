@@ -47,7 +47,8 @@ export function createFsComputed(
 		}
 
 		// 文件更新的时间戳
-		const modifyTime = effects.getFileModifyTimeStamp()
+		const modifyTime =
+			await effects.getFileModifyTimeStamp()
 		// 目标文件 hash
 		const fileHash = await effects.hashFile()
 		// 计算结果
@@ -92,7 +93,8 @@ export const notChanged = async (
 	const { lastModifyTime, lastFilehash } = item
 
 	// 检查更新时间是否有变
-	const nowModifyTime = effects.getFileModifyTimeStamp()
+	const nowModifyTime =
+		await effects.getFileModifyTimeStamp()
 	if (nowModifyTime != lastModifyTime) {
 		// 如果更新时间变了，再检查目标文件是不是真的变了
 		const nowFilehash = await effects.hashFile()
