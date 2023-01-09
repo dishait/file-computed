@@ -26,9 +26,12 @@ describe('createFsComputed', () => {
 			return n
 		}
 
-		const result = await fsComputed('examples/foo.txt', fn)
+		const result = await fsComputed(
+			'test/fixture/foo.txt',
+			fn
+		)
 
-		expect(result).toMatchInlineSnapshot('1')
+		expect(result).toMatchInlineSnapshot('2')
 	})
 
 	it('multiple', async () => {
@@ -43,11 +46,11 @@ describe('createFsComputed', () => {
 		}
 
 		const result = await fsComputed(
-			['examples/foo.txt', 'examples/bar.txt'],
+			['test/fixture/foo.txt', 'test/fixture/bar.txt'],
 			fn
 		)
 
-		expect(result).toMatchInlineSnapshot('1')
+		expect(result).toMatchInlineSnapshot('3')
 	})
 
 	it('sync', async () => {
@@ -57,17 +60,17 @@ describe('createFsComputed', () => {
 
 		const fn = () => {
 			let n = (fsStorageSync.getItem('n3') as number) || 0
-			console.log('n', n)
 			n++
 			fsStorageSync.setItem('n3', n)
+
 			return n
 		}
 
 		const result = fsComputedSync(
-			['examples/foo.txt', 'examples/bar.txt'],
+			['test/fixture/foo.txt', 'test/fixture/bar.txt'],
 			fn
 		)
 
-		expect(result).toMatchInlineSnapshot('1')
+		expect(result).toMatchInlineSnapshot('3')
 	})
 })
