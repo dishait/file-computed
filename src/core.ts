@@ -1,6 +1,7 @@
 import mem from 'mem'
 import { readFileSync } from 'fs'
 import { isArray } from 'm-type-tools'
+import type { MayBeArray, AnyFunction } from 'm-type-tools'
 import {
 	isEqual,
 	hash as _hash,
@@ -11,7 +12,7 @@ import {
 	getFileModifyTimeStamp,
 	getFileModifyTimeStampSync
 } from './fs'
-import type { MayBeArray, AnyFunction } from 'm-type-tools'
+
 import {
 	createFsStorage,
 	createFsStorageSync
@@ -249,11 +250,11 @@ export function createFsComputedSync(
 		return refresh()
 	}
 
-	computedSync.remove = async function (key: string) {
+	computedSync.remove = function (key: string) {
 		storage.removeItem(key)
 	}
 
-	computedSync.clear = async function () {
+	computedSync.clear = function () {
 		storage.clear()
 	}
 
