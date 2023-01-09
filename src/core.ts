@@ -1,33 +1,24 @@
 import mem from 'mem'
+import { isEqual } from 'ohash'
 import { readFileSync } from 'fs'
 import { isArray } from 'm-type-tools'
 import type { MayBeArray, AnyFunction } from 'm-type-tools'
 import {
-	isEqual,
-	hash as _hash,
-	murmurHash as _murmurHash
-} from 'ohash'
+	createFsStorage,
+	createFsStorageSync
+} from './storage'
 import {
 	readFile,
 	getFileModifyTimeStamp,
 	getFileModifyTimeStampSync
 } from './fs'
-
 import {
-	createFsStorage,
-	createFsStorageSync
-} from './storage'
-
-const hash = mem(_hash)
-
-const murmurHash = mem(_murmurHash)
-
-function deepCopy<T>(origin: T) {
-	return JSON.parse(JSON.stringify(origin)) as T
-}
-
-const parallel: typeof Promise.all =
-	Promise.all.bind(Promise)
+	hash,
+	parallel,
+	deepCopy,
+	murmurHash,
+	diffModifyTimeStamps
+} from './utils'
 
 interface ICreateFsComputedOptions {
 	cachePath?: string
@@ -46,12 +37,10 @@ export function createFsComputed(
 	const { cachePath } = options
 	const storage = createFsStorage(cachePath)
 
-	async function computed<T extends AnyFunction>(
-		paths: MayBeArray<string>,
-		fn: T
-	) {
-		type Item = IItem<ReturnType<T>>
-
+	async function computed<
+		T extends AnyFunction,
+		I extends IItem<ReturnType<T>>
+	>(paths: MayBeArray<string>, fn: T) {
 		if (!isArray(paths)) {
 			paths = [paths]
 		}
@@ -71,17 +60,17 @@ export function createFsComputed(
 					)
 				}
 
-				const oldFileHashs = deepCopy(item.fileHashs)
+				const newFileHashs = deepCopy(oldFileHashs)
 
 				await parallel(
 					changedIndexs.map(async i => {
-						oldFileHashs[i] = murmurHash(
+						newFileHashs[i] = murmurHash(
 							await readFile(paths[i])
 						)
 					})
 				)
 
-				return oldFileHashs
+				return newFileHashs
 			}
 		)
 
@@ -97,7 +86,7 @@ export function createFsComputed(
 		const createResult = mem(fn)
 
 		const key = hash(paths)
-		const item = (await storage.getItem(key)) as Item
+		const oldItem = (await storage.getItem(key)) as I
 
 		async function refresh() {
 			const result = await createResult()
@@ -106,17 +95,24 @@ export function createFsComputed(
 				fnHash: createFnHash(),
 				fileHashs: await createFileHashs(),
 				modifyTimeStamps: await createModifyTimeStamps()
-			} as Item)
+			} as I)
 			return result
 		}
 
-		if (!item) {
+		if (!oldItem) {
 			return refresh()
 		}
 
-		const fnHash = createFnHash()
+		const {
+			fnHash: oldFnHash,
+			result: oldResult,
+			fileHashs: oldFileHashs,
+			modifyTimeStamps: oldModifyTimeStamps
+		} = oldItem
+
+		const newFnHash = createFnHash()
 		// check fn
-		if (!isEqual(fnHash, item.fnHash)) {
+		if (!isEqual(newFnHash, oldFnHash)) {
 			return refresh()
 		}
 
@@ -126,19 +122,19 @@ export function createFsComputed(
 		const { changed: mayBeChanged, changedIndexs } =
 			diffModifyTimeStamps(
 				newModifyTimeStamps,
-				item.modifyTimeStamps
+				oldModifyTimeStamps
 			)
 		// check modifyTimeStamps
 		if (!mayBeChanged) {
-			return item.result
+			return oldResult
 		}
 
 		const newFileHashs = await createFileHashs(
 			changedIndexs
 		)
 		// check hash
-		if (isEqual(newFileHashs, item.fileHashs)) {
-			return item.result
+		if (isEqual(newFileHashs, oldFileHashs)) {
+			return oldResult
 		}
 
 		return refresh()
@@ -161,12 +157,10 @@ export function createFsComputedSync(
 	const { cachePath } = options
 	const storage = createFsStorageSync(cachePath)
 
-	function computedSync<T extends AnyFunction>(
-		paths: MayBeArray<string>,
-		fn: T
-	) {
-		type Item = IItem<ReturnType<T>>
-
+	function computedSync<
+		T extends AnyFunction,
+		I extends IItem<ReturnType<T>>
+	>(paths: MayBeArray<string>, fn: T) {
 		if (!isArray(paths)) {
 			paths = [paths]
 		}
@@ -185,15 +179,15 @@ export function createFsComputedSync(
 					)
 				}
 
-				const oldFileHashs = deepCopy(item.fileHashs)
+				const newFileHashs = deepCopy(oldFileHashs)
 
 				changedIndexs.forEach(i => {
-					oldFileHashs[i] = murmurHash(
+					newFileHashs[i] = murmurHash(
 						readFileSync(paths[i])
 					)
 				})
 
-				return oldFileHashs
+				return newFileHashs
 			}
 		)
 
@@ -207,7 +201,14 @@ export function createFsComputedSync(
 		const createResult = mem(fn)
 
 		const key = hash(paths)
-		const item = storage.getItem(key) as Item
+		const oldItem = storage.getItem(key) as I
+
+		const {
+			fnHash: oldFnHash,
+			result: oldResult,
+			fileHashs: oldFileHashs,
+			modifyTimeStamps: oldModifyTimeStamps
+		} = oldItem
 
 		function refresh() {
 			const result = createResult()
@@ -216,17 +217,17 @@ export function createFsComputedSync(
 				fnHash: createFnHash(),
 				fileHashs: createFileHashs(),
 				modifyTimeStamps: createModifyTimeStamps()
-			} as Item)
+			} as I)
 			return result
 		}
 
-		if (!item) {
+		if (!oldItem) {
 			return refresh()
 		}
 
-		const fnHash = createFnHash()
+		const newFnHash = createFnHash()
 		// check fn
-		if (!isEqual(fnHash, item.fnHash)) {
+		if (!isEqual(newFnHash, oldFnHash)) {
 			return refresh()
 		}
 
@@ -234,17 +235,17 @@ export function createFsComputedSync(
 		const { changed: mayBeChanged, changedIndexs } =
 			diffModifyTimeStamps(
 				newModifyTimeStamps,
-				item.modifyTimeStamps
+				oldModifyTimeStamps
 			)
 		// check modifyTimeStamps
 		if (!mayBeChanged) {
-			return item.result
+			return oldResult
 		}
 
 		const newFileHashs = createFileHashs(changedIndexs)
 		// check hash
-		if (isEqual(newFileHashs, item.fileHashs)) {
-			return item.result
+		if (isEqual(newFileHashs, oldFileHashs)) {
+			return oldResult
 		}
 
 		return refresh()
@@ -259,23 +260,4 @@ export function createFsComputedSync(
 	}
 
 	return computedSync
-}
-
-function diffModifyTimeStamps(
-	newModifyTimeStamps: number[],
-	oldModifyTimeStamps: number[]
-) {
-	const changedIndexs: number[] = []
-	for (let i = 0; i < newModifyTimeStamps.length; i++) {
-		const newModifyTimeStamp = newModifyTimeStamps[i]
-		const oldModifyTimeStamp = oldModifyTimeStamps[i]
-		if (newModifyTimeStamp !== oldModifyTimeStamp) {
-			changedIndexs.push(i)
-		}
-	}
-
-	return {
-		changedIndexs,
-		changed: changedIndexs.length > 0
-	}
 }
