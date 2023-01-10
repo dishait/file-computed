@@ -1,5 +1,6 @@
 import { isEqual } from 'ohash'
 import { isArray } from 'm-type-tools'
+import { normalizePath } from './path'
 import { lstat, readFile } from 'fs/promises'
 import { hash, parallel, murmurHash } from './utils'
 import { existsSync, lstatSync, readFileSync } from 'fs'
@@ -17,19 +18,13 @@ interface ICreateFsComputedOptions {
 	cachePath?: string
 }
 
-interface IFileMeta {
-	type: 'file'
-	hash: number
-	modifyTimeStamp: number
-}
-
-interface IDirMeta {
-	type: 'dir'
-	modifyTimeStamp: number
-}
-
 interface IItem {
-	metas: Array<IFileMeta | IDirMeta>
+	metas: Array<{
+		path: string
+		hash: number
+		type: 'file' | 'dir'
+		modifyTimeStamp: number
+	}>
 	fns: Array<{
 		result: any
 		hash: string
@@ -56,14 +51,16 @@ export function createFsComputed(
 		const oldItem = (await storage.getItem(key)) as IItem
 
 		if (!oldItem) {
-			const metas = await createMetas(paths)
+			const { metas: nweMetas, loadExistsFileHashs } =
+				await createMetas(paths)
+			await loadExistsFileHashs()
 			const newFn = {
 				hash: hash(fn),
 				result: (await fn()) as Value
 			}
 			await storage.setItem(key, {
-				metas,
-				fns: [newFn]
+				fns: [newFn],
+				metas: nweMetas
 			})
 
 			return newFn.result
@@ -90,9 +87,32 @@ export function createFsComputed(
 			return newResult as Value
 		}
 
-		const newMetas = await createMetas(paths)
+		const {
+			metas: newMetas,
+			loadExistsFileHashs,
+			existsFileIndexs
+		} = await createMetas(paths)
 
-		if (isEqual(oldMetas, newMetas)) {
+		const mayBeChanged = newMetas.some((newMeta, index) => {
+			const oldMeta = oldMetas[index]
+			return (
+				newMeta.modifyTimeStamp !== oldMeta.modifyTimeStamp
+			)
+		})
+
+		if (!mayBeChanged) {
+			return oldFn.result as Value
+		}
+
+		await loadExistsFileHashs()
+
+		const changed = existsFileIndexs.some(index => {
+			const oldMetaHash = oldMetas[index].hash
+			const newMetaHash = newMetas[index].hash
+			return oldMetaHash !== newMetaHash
+		})
+
+		if (!changed) {
 			return oldFn.result as Value
 		}
 
@@ -137,14 +157,18 @@ export function createFsComputedSync(
 		const oldItem = storage.getItem(key) as IItem
 
 		if (!oldItem) {
-			const metas = createMetasSync(paths)
+			const { metas: nweMetas, loadExistsFileHashs } =
+				createMetasSync(paths)
+
+			loadExistsFileHashs()
 			const newFn = {
 				hash: hash(fn),
 				result: fn() as Value
 			}
+
 			storage.setItem(key, {
-				metas,
-				fns: [newFn]
+				fns: [newFn],
+				metas: nweMetas
 			})
 
 			return newFn.result
@@ -170,10 +194,35 @@ export function createFsComputedSync(
 			return newResult as Value
 		}
 
-		const newMetas = createMetasSync(paths)
-		if (isEqual(oldMetas, newMetas)) {
+		const {
+			metas: newMetas,
+			existsFileIndexs,
+			loadExistsFileHashs
+		} = createMetasSync(paths)
+
+		const mayBeChanged = newMetas.some((newMeta, index) => {
+			const oldMeta = oldMetas[index]
+			return (
+				newMeta.modifyTimeStamp !== oldMeta.modifyTimeStamp
+			)
+		})
+
+		if (!mayBeChanged) {
 			return oldFn.result as Value
 		}
+
+		loadExistsFileHashs()
+
+		const changed = existsFileIndexs.some(index => {
+			const oldMetaHash = oldMetas[index].hash
+			const newMetaHash = newMetas[index].hash
+			return oldMetaHash !== newMetaHash
+		})
+
+		if (!changed) {
+			return oldFn.result as Value
+		}
+
 		const newResult = fn()
 		oldFn.result = newResult
 		storage.setItem(key, {
@@ -195,11 +244,15 @@ export function createFsComputedSync(
 	return computed
 }
 
-async function createMetas(paths: string[]) {
-	return parallel(
-		paths.map(async path => {
+export async function createMetas(paths: string[]) {
+	const existsFileIndexs: number[] = []
+
+	const metas = await parallel(
+		paths.map(async (path, index) => {
+			path = normalizePath(path)
 			if (!existsSync(path)) {
 				return {
+					path,
 					hash: 0,
 					type: 'file',
 					modifyTimeStamp: 0
@@ -212,24 +265,44 @@ async function createMetas(paths: string[]) {
 			)
 			if (stat.isDirectory()) {
 				return {
+					path,
+					hash: 0,
 					type: 'dir',
 					modifyTimeStamp
 				}
 			}
 
+			existsFileIndexs.push(index)
+
 			return {
+				path,
 				type: 'file',
-				modifyTimeStamp,
-				hash: murmurHash(await readFile(path))
+				modifyTimeStamp
 			}
 		})
 	)
+
+	function loadExistsFileHashs() {
+		return parallel(
+			existsFileIndexs.map(async existsFileIndex => {
+				metas[existsFileIndex]['hash'] = murmurHash(
+					await readFile(metas[existsFileIndex]['path'])
+				)
+			})
+		)
+	}
+
+	return { metas, loadExistsFileHashs, existsFileIndexs }
 }
 
-function createMetasSync(paths: string[]) {
-	return paths.map(path => {
+export function createMetasSync(paths: string[]) {
+	const existsFileIndexs: number[] = []
+
+	const metas = paths.map((path, index) => {
+		path = normalizePath(path)
 		if (!existsSync(path)) {
 			return {
+				path,
 				hash: 0,
 				type: 'file',
 				modifyTimeStamp: 0
@@ -240,15 +313,29 @@ function createMetasSync(paths: string[]) {
 		const modifyTimeStamp = getFileModifyTimeStampSync(path)
 		if (stat.isDirectory()) {
 			return {
+				path,
+				hash: 0,
 				type: 'dir',
 				modifyTimeStamp
 			}
 		}
 
+		existsFileIndexs.push(index)
+
 		return {
+			path,
 			type: 'file',
-			modifyTimeStamp,
-			hash: murmurHash(readFileSync(path))
+			modifyTimeStamp
 		}
 	})
+
+	function loadExistsFileHashs() {
+		existsFileIndexs.forEach(async existsFileIndex => {
+			metas[existsFileIndex]['hash'] = murmurHash(
+				readFileSync(metas[existsFileIndex]['path'])
+			)
+		})
+	}
+
+	return { metas, loadExistsFileHashs, existsFileIndexs }
 }

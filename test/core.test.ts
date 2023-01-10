@@ -50,7 +50,7 @@ describe('createFsComputed', () => {
 			fn
 		)
 
-		expect(result).toMatchInlineSnapshot('3')
+		expect(result).toMatchInlineSnapshot('2')
 	})
 
 	it('sync', async () => {
@@ -71,6 +71,6 @@ describe('createFsComputed', () => {
 			fn
 		)
 
-		expect(result).toMatchInlineSnapshot('3')
+		expect(result).toMatchInlineSnapshot('2')
 	})
 })
