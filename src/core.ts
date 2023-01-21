@@ -19,15 +19,12 @@ interface ICreateFsComputedOptions {
 }
 
 interface IItem {
+	result: any
 	metas: Array<{
 		path: string
 		hash: number
 		type: 'file' | 'dir'
 		modifyTimeStamp: number
-	}>
-	fns: Array<{
-		result: any
-		hash: string
 	}>
 }
 
@@ -47,44 +44,19 @@ export function createFsComputed(
 			paths = [paths]
 		}
 
-		const key = hash(paths)
+		const key = hash([paths, fn])
 		const oldItem = (await storage.getItem(key)) as IItem
 
 		if (!oldItem) {
-			const { metas: nweMetas, loadExistsFileHashs } =
+			const { metas, loadExistsFileHashs } =
 				await createMetas(paths)
 			await loadExistsFileHashs()
-			const newFn = {
-				hash: hash(fn),
-				result: (await fn()) as Value
-			}
-			await storage.setItem(key, {
-				fns: [newFn],
-				metas: nweMetas
-			})
-
-			return newFn.result
+			const result = await fn()
+			await storage.setItem(key, { result, metas })
+			return result
 		}
 
-		const { metas: oldMetas, fns: oldFns = [] } = oldItem
-
-		const newFnHash = hash(fn)
-
-		const oldFn = oldFns.find(oldFn => {
-			return isEqual(oldFn.hash, newFnHash)
-		})
-		if (!oldFn) {
-			const newResult = await fn()
-			oldFns.push({
-				hash: newFnHash,
-				result: newResult
-			})
-
-			Object.assign(oldItem, { fns: oldFns })
-
-			await storage.setItem(key, oldItem)
-			return newResult as Value
-		}
+		const { metas: oldMetas, result } = oldItem
 
 		const {
 			metas: newMetas,
@@ -92,19 +64,36 @@ export function createFsComputed(
 			existsFileIndexs
 		} = await createMetas(paths)
 
-		const mayBeChanged = newMetas.some((newMeta, index) => {
+		async function refresh() {
+			const newResult = await fn()
+			await storage.setItem(key, {
+				result: newResult,
+				metas: newMetas
+			} as IItem)
+
+			return newResult as Value
+		}
+
+		// check mtime
+		const changedMeta = newMetas.find((newMeta, index) => {
 			const oldMeta = oldMetas[index]
 			return (
 				newMeta.modifyTimeStamp !== oldMeta.modifyTimeStamp
 			)
 		})
 
-		if (!mayBeChanged) {
-			return oldFn.result as Value
+		if (!changedMeta) {
+			return result as Value
 		}
 
 		await loadExistsFileHashs()
 
+		// if dir modifyTimeStamp changed
+		if (changedMeta.type === 'dir') {
+			return (await refresh()) as Value
+		}
+
+		// check hash
 		const changed = existsFileIndexs.some(index => {
 			const oldMetaHash = oldMetas[index].hash
 			const newMetaHash = newMetas[index].hash
@@ -112,17 +101,10 @@ export function createFsComputed(
 		})
 
 		if (!changed) {
-			return oldFn.result as Value
+			return result as Value
 		}
 
-		const newResult = await fn()
-		oldFn.result = newResult
-		await storage.setItem(key, {
-			fns: oldFns,
-			metas: newMetas
-		} as IItem)
-
-		return newResult as Value
+		return (await refresh()) as Value
 	}
 
 	computed.remove = async function (key: string) {
@@ -156,41 +138,21 @@ export function createFsComputedSync(
 		const oldItem = storage.getItem(key) as IItem
 
 		if (!oldItem) {
-			const { metas: nweMetas, loadExistsFileHashs } =
+			const { metas, loadExistsFileHashs } =
 				createMetasSync(paths)
 
 			loadExistsFileHashs()
-			const newFn = {
-				hash: hash(fn),
-				result: fn() as Value
-			}
 
+			const result = fn()
 			storage.setItem(key, {
-				fns: [newFn],
-				metas: nweMetas
+				result,
+				metas
 			})
 
-			return newFn.result
+			return result as Value
 		}
 
-		const { metas: oldMetas, fns: oldFns = [] } = oldItem
-
-		const newFnHash = hash(fn)
-		const oldFn = oldFns.find(oldFn => {
-			return isEqual(oldFn.hash, newFnHash)
-		})
-		if (!oldFn) {
-			const newResult = fn()
-			oldFns.push({
-				hash: newFnHash,
-				result: newResult
-			})
-
-			Object.assign(oldItem, { fns: oldFns })
-			storage.setItem(key, oldItem)
-
-			return newResult as Value
-		}
+		const { metas: oldMetas, result } = oldItem
 
 		const {
 			metas: newMetas,
@@ -198,18 +160,33 @@ export function createFsComputedSync(
 			loadExistsFileHashs
 		} = createMetasSync(paths)
 
-		const mayBeChanged = newMetas.some((newMeta, index) => {
+		function refresh() {
+			const newResult = fn()
+			storage.setItem(key, {
+				result: newResult,
+				metas: newMetas
+			} as IItem)
+
+			return newResult as Value
+		}
+
+		const changedMeta = newMetas.find((newMeta, index) => {
 			const oldMeta = oldMetas[index]
 			return (
 				newMeta.modifyTimeStamp !== oldMeta.modifyTimeStamp
 			)
 		})
 
-		if (!mayBeChanged) {
-			return oldFn.result as Value
+		if (!changedMeta) {
+			return result as Value
 		}
 
 		loadExistsFileHashs()
+
+		// if dir modifyTimeStamp changed
+		if (changedMeta.type === 'dir') {
+			return refresh() as Value
+		}
 
 		const changed = existsFileIndexs.some(index => {
 			const oldMetaHash = oldMetas[index].hash
@@ -218,17 +195,10 @@ export function createFsComputedSync(
 		})
 
 		if (!changed) {
-			return oldFn.result as Value
+			return result as Value
 		}
 
-		const newResult = fn()
-		oldFn.result = newResult
-		storage.setItem(key, {
-			fns: oldFns,
-			metas: newMetas
-		} as IItem)
-
-		return newResult as Value
+		return refresh() as Value
 	}
 
 	computed.remove = function (key: string) {

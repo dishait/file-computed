@@ -31,7 +31,7 @@ describe('createFsComputed', () => {
 			fn
 		)
 
-		expect(result).toMatchInlineSnapshot('2')
+		expect(result).toMatchInlineSnapshot('1')
 	})
 
 	it('multiple', async () => {
@@ -72,5 +72,21 @@ describe('createFsComputed', () => {
 		)
 
 		expect(result).toMatchInlineSnapshot('2')
+	})
+
+	it('dir', async () => {
+		const fsComputed = createFsComputed()
+
+		const fn = async () => {
+			let n =
+				((await fsStorage.getItem('n4')) as number) || 0
+			n++
+			await fsStorage.setItem('n4', n)
+			return n
+		}
+
+		const result = await fsComputed(['test/fixture'], fn)
+
+		expect(result).toMatchInlineSnapshot('4')
 	})
 })
