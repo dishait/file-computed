@@ -66,7 +66,7 @@ export function createFsComputed(
 			return newFn.result
 		}
 
-		const { metas: oldMetas, fns: oldFns } = oldItem
+		const { metas: oldMetas, fns: oldFns = [] } = oldItem
 
 		const newFnHash = hash(fn)
 
@@ -174,7 +174,7 @@ export function createFsComputedSync(
 			return newFn.result
 		}
 
-		const { metas: oldMetas, fns: oldFns } = oldItem
+		const { metas: oldMetas, fns: oldFns = [] } = oldItem
 
 		const newFnHash = hash(fn)
 		const oldFn = oldFns.find(oldFn => {
