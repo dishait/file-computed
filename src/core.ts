@@ -80,10 +80,9 @@ export function createFsComputed(
 				result: newResult
 			})
 
-			await storage.setItem(key, {
-				...oldItem,
-				fns: oldFns
-			} as IItem)
+			Object.assign(oldItem, { fns: oldFns })
+
+			await storage.setItem(key, oldItem)
 			return newResult as Value
 		}
 
@@ -187,10 +186,9 @@ export function createFsComputedSync(
 				result: newResult
 			})
 
-			storage.setItem(key, {
-				...oldItem,
-				fns: oldFns
-			} as IItem)
+			Object.assign(oldItem, { fns: oldFns })
+			storage.setItem(key, oldItem)
+
 			return newResult as Value
 		}
 
