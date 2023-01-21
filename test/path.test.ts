@@ -28,7 +28,7 @@ describe('path', () => {
 	it('normalizeCachePath', () => {
 		// default to ./node_modules/.file-computed
 		expect(normalizeCachePath()).toMatchInlineSnapshot(
-			'"D:/Code/Work/file-computed/node_modules/.file-computed"'
+			'"D:/Code/Work/file-computed/node_modules/.cache/file-computed"'
 		)
 
 		// of course, other paths are also supported

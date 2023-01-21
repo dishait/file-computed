@@ -14,7 +14,7 @@ export const findUpDefaultCachePath = mem(function () {
 	const path = findUpSync('node_modules', {
 		type: 'directory'
 	})
-	return normalizePath(path, '.file-computed')
+	return normalizePath(path, '.cache/file-computed')
 })
 
 export function normalizeCachePath(path?: string) {

@@ -20,6 +20,6 @@ describe('fs', () => {
 	it('getFileModifyTimeStamp', async () => {
 		expect(
 			await getFileModifyTimeStamp('test/fixture')
-		).toMatchInlineSnapshot('1674284396676')
+		).toMatchInlineSnapshot('1674285167158')
 	})
 })

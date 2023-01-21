@@ -1,4 +1,3 @@
-import { isEqual } from 'ohash'
 import { isArray } from 'm-type-tools'
 import { normalizePath } from './path'
 import { lstat, readFile } from 'fs/promises'

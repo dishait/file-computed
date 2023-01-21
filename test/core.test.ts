@@ -11,7 +11,7 @@ describe('createFsComputed', () => {
 	const fsStorage = createFsStorage()
 	const syncCachePath = normalizePath(
 		'node_modules',
-		'.file-computed-sync'
+		'.cache/.file-computed-sync'
 	)
 	const fsStorageSync = createFsStorageSync(syncCachePath)
 
@@ -50,7 +50,7 @@ describe('createFsComputed', () => {
 			fn
 		)
 
-		expect(result).toMatchInlineSnapshot('2')
+		expect(result).toMatchInlineSnapshot('1')
 	})
 
 	it('sync', async () => {
@@ -71,7 +71,7 @@ describe('createFsComputed', () => {
 			fn
 		)
 
-		expect(result).toMatchInlineSnapshot('2')
+		expect(result).toMatchInlineSnapshot('1')
 	})
 
 	it('dir', async () => {
@@ -87,6 +87,6 @@ describe('createFsComputed', () => {
 
 		const result = await fsComputed(['test/fixture'], fn)
 
-		expect(result).toMatchInlineSnapshot('4')
+		expect(result).toMatchInlineSnapshot('1')
 	})
 })
