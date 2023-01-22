@@ -1,9 +1,13 @@
-import { isArray, UnPromiseReturnType } from 'm-type-tools'
+import { isArray } from 'm-type-tools'
 import { normalizePath } from './path'
 import { lstat, readFile } from 'fs/promises'
 import { hash, parallel, murmurHash } from './utils'
 import { existsSync, lstatSync, readFileSync } from 'fs'
-import type { AnyFunction, MayBeArray } from 'm-type-tools'
+import type {
+	AnyFunction,
+	MayBeArray,
+	UnPromiseReturnType
+} from 'm-type-tools'
 import {
 	createFsStorage,
 	createFsStorageSync
