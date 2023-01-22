@@ -1,4 +1,4 @@
-import { isArray } from 'm-type-tools'
+import { isArray, UnPromiseReturnType } from 'm-type-tools'
 import { normalizePath } from './path'
 import { lstat, readFile } from 'fs/promises'
 import { hash, parallel, murmurHash } from './utils'
@@ -36,8 +36,8 @@ export function createFsComputed(
 	async function computed<T extends AnyFunction>(
 		paths: MayBeArray<string>,
 		fn: T
-	): Promise<ReturnType<T>> {
-		type Value = ReturnType<T>
+	): Promise<UnPromiseReturnType<T>> {
+		type Value = UnPromiseReturnType<T>
 
 		if (!isArray(paths)) {
 			paths = [paths]
