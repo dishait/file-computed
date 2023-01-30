@@ -1,8 +1,18 @@
 import { isArray } from 'm-type-tools'
-import { normalizePath } from './path'
 import { lstat, readFile } from 'fs/promises'
-import { hash, parallel, murmurHash } from './utils'
-import { existsSync, lstatSync, readFileSync } from 'fs'
+import {
+	hash,
+	parallel,
+	murmurHash,
+	untilCheckScope
+} from './utils'
+import {
+	lstatSync,
+	existsSync,
+	readFileSync,
+	createReadStream
+} from 'fs'
+import { normalizeCachePath, normalizePath } from './path'
 import type {
 	AnyFunction,
 	MayBeArray,
@@ -12,10 +22,24 @@ import {
 	createFsStorage,
 	createFsStorageSync
 } from './storage'
+
 import {
+	ensureFile,
+	debouncedWriteJsonFile,
 	getFileModifyTimeStamp,
 	getFileModifyTimeStampSync
 } from './fs'
+
+import * as StreamArray from 'stream-json/streamers/StreamArray'
+import { createRequire } from 'module'
+
+const require = createRequire(import.meta.url)
+
+const { parser } = require('stream-json')
+
+const {
+	streamArray
+} = require('stream-json/streamers/streamArray')
 
 interface ICreateFsComputedOptions {
 	cachePath?: string
@@ -218,7 +242,7 @@ export function createFsComputedSync(
 export async function createMetas(paths: string[]) {
 	const existsFileIndexs: number[] = []
 
-	const metas = await parallel(
+	const metas = (await parallel(
 		paths.map(async (path, index) => {
 			path = normalizePath(path)
 			if (!existsSync(path)) {
@@ -251,7 +275,7 @@ export async function createMetas(paths: string[]) {
 				modifyTimeStamp
 			}
 		})
-	)
+	)) as IItem['metas']
 
 	function loadExistsFileHashs() {
 		return parallel(
@@ -298,7 +322,7 @@ export function createMetasSync(paths: string[]) {
 			type: 'file',
 			modifyTimeStamp
 		}
-	})
+	}) as IItem['metas']
 
 	function loadExistsFileHashs() {
 		existsFileIndexs.forEach(async existsFileIndex => {
@@ -309,4 +333,117 @@ export function createMetasSync(paths: string[]) {
 	}
 
 	return { metas, loadExistsFileHashs, existsFileIndexs }
+}
+
+type StreamItem = IItem & { key: string }
+
+export function createFsComputedWithStream(
+	options: ICreateFsComputedOptions = {}
+) {
+	const { cachePath } = options
+	const itemsFile = normalizePath(
+		normalizeCachePath(cachePath),
+		'items.json'
+	)
+
+	let stream: StreamArray
+	const items: StreamItem[] = []
+
+	ensureFile(itemsFile, '[]').then(() => {
+		stream = createReadStream(itemsFile)
+			.pipe(parser())
+			.pipe(streamArray())
+			.on('data', v => {
+				items.push(v.value)
+			})
+
+		process.once('beforeExit', () => {
+			stream.removeAllListeners()
+		})
+	})
+
+	async function computed<T extends AnyFunction>(
+		paths: MayBeArray<string>,
+		fn: T
+	): Promise<UnPromiseReturnType<T>> {
+		type Value = UnPromiseReturnType<T>
+
+		if (!isArray(paths)) {
+			paths = [paths]
+		}
+
+		const key = hash([paths, fn])
+		const oldItem = await untilCheckScope(
+			() => items.find(item => item.key === key),
+			() => stream?.closed
+		)
+
+		if (oldItem === null) {
+			const { metas, loadExistsFileHashs } =
+				await createMetas(paths)
+			await loadExistsFileHashs()
+			const result = await fn()
+
+			items.push({
+				key,
+				metas,
+				result
+			})
+
+			await debouncedWriteJsonFile(itemsFile, items)
+			return result
+		}
+		const { metas: oldMetas, result } = oldItem
+
+		const {
+			metas: newMetas,
+			loadExistsFileHashs,
+			existsFileIndexs
+		} = await createMetas(paths)
+
+		async function refresh() {
+			const newResult = await fn()
+
+			oldItem.metas = newMetas
+			oldItem.result = newResult
+
+			await debouncedWriteJsonFile(itemsFile, items)
+
+			return newResult as Value
+		}
+
+		// check mtime
+		const changedMeta = newMetas.find((newMeta, index) => {
+			const oldMeta = oldMetas[index]
+			return (
+				newMeta.modifyTimeStamp !== oldMeta.modifyTimeStamp
+			)
+		})
+
+		if (!changedMeta) {
+			return result as Value
+		}
+
+		await loadExistsFileHashs()
+
+		// if dir modifyTimeStamp changed
+		if (changedMeta.type === 'dir') {
+			return (await refresh()) as Value
+		}
+
+		// check hash
+		const changed = existsFileIndexs.some(index => {
+			const oldMetaHash = oldMetas[index].hash
+			const newMetaHash = newMetas[index].hash
+			return oldMetaHash !== newMetaHash
+		})
+
+		if (!changed) {
+			return result as Value
+		}
+
+		return (await refresh()) as Value
+	}
+
+	return computed
 }

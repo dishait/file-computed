@@ -2,6 +2,7 @@ lockfileVersion: 5.4
 
 specifiers:
   '@types/node': ^18.11.18
+  '@types/stream-json': ^1.7.3
   bumpp: ^8.2.1
   c8: ^7.12.0
   destr: ^1.2.2
@@ -9,6 +10,8 @@ specifiers:
   m-type-tools: ^0.4.0
   mem: ^9.0.2
   ohash: ^1.0.0
+  perfect-debounce: ^0.1.3
+  stream-json: ^1.7.5
   tsx: ^3.12.1
   typescript: ^4.9.4
   unbuild: ^1.0.2
@@ -16,9 +19,12 @@ specifiers:
   vitest: ^0.26.3
 
 dependencies:
+  '@types/stream-json': 1.7.3
   destr: 1.2.2
   m-type-tools: 0.4.0
   ohash: 1.0.0
+  perfect-debounce: 0.1.3
+  stream-json: 1.7.5
   unstorage: 1.0.1
 
 devDependencies:
@@ -671,11 +677,23 @@ packages:
 
   /@types/node/18.11.18:
     resolution: {integrity: sha512-DHQpWGjyQKSHj3ebjFI/wRKcqQcdR+MoFBygntYOZytCqNfkd2ZC4ARDJ2DQqhjH5p85Nnd3jhUJIXrszFX/JA==}
-    dev: true
 
   /@types/resolve/1.20.2:
     resolution: {integrity: sha512-60BCwRFOZCQhDncwQdxxeOEEkbc5dIMccYLwbxsS4TUNeVECQ/pBJ0j09mrHOl/JJvpRPGwO9SvE4nR2Nb/a4Q==}
     dev: true
+
+  /@types/stream-chain/2.0.1:
+    resolution: {integrity: sha512-D+Id9XpcBpampptkegH7WMsEk6fUdf9LlCIX7UhLydILsqDin4L0QT7ryJR0oycwC7OqohIzdfcMHVZ34ezNGg==}
+    dependencies:
+      '@types/node': 18.11.18
+    dev: false
+
+  /@types/stream-json/1.7.3:
+    resolution: {integrity: sha512-Jqsyq5VPOTWorvEmzWhEWH5tJnHA+bB8vt/Zzb11vSDj8esfSHDMj2rbVjP0mfJQzl3YBJSXBBq08iiyaBK3KA==}
+    dependencies:
+      '@types/node': 18.11.18
+      '@types/stream-chain': 2.0.1
+    dev: false
 
   /acorn-walk/8.2.0:
     resolution: {integrity: sha512-k+iyHEuPgSw6SbuDpGQM+06HQUa04DZ3o+F6CSzXMvvI5KMvnaEqXe+YVe555R9nn6GPt404fos4wcgpw12SDA==}
@@ -962,8 +980,8 @@ packages:
     engines: {node: '>=0.10.0'}
     dev: true
 
-  /defu/6.1.1:
-    resolution: {integrity: sha512-aA964RUCsBt0FGoNIlA3uFgo2hO+WWC0fiC6DBps/0SFzkKcYoM/3CzVLIa5xSsrFjdioMdYgAIbwo80qp2MoA==}
+  /defu/6.1.2:
+    resolution: {integrity: sha512-+uO4+qr7msjNNWKYPHqN/3+Dx3NFkmIzayk2L1MyZQlvgZb/J1A0fo410dpKrN2SnqFjt8n4JL8fDJE0wIgjFQ==}
 
   /denque/2.0.1:
     resolution: {integrity: sha512-tfiWc6BQLXNLpNiR5iGd0Ocu3P3VpxfzFiqubLgMfhfOw9WyvgJBd46CClNn9k3qfbjvT//0cf7AlYRX/OslMQ==}
@@ -1632,7 +1650,7 @@ packages:
     dependencies:
       clipboardy: 3.0.0
       colorette: 2.0.19
-      defu: 6.1.1
+      defu: 6.1.2
       get-port-please: 2.6.1
       http-shutdown: 1.2.2
       ip-regex: 5.0.0
@@ -1782,7 +1800,7 @@ packages:
       typescript:
         optional: true
     dependencies:
-      defu: 6.1.1
+      defu: 6.1.2
       esbuild: 0.15.18
       fs-extra: 10.1.0
       globby: 13.1.3
@@ -1936,6 +1954,10 @@ packages:
   /pathval/1.1.1:
     resolution: {integrity: sha512-Dp6zGqpTdETdR63lehJYPeIOqpiNBNtc7BpWSLrOje7UaIsE5aY92r/AunQA7rsXvet3lrJ3JnZX29UPTKXyKQ==}
     dev: true
+
+  /perfect-debounce/0.1.3:
+    resolution: {integrity: sha512-NOT9AcKiDGpnV/HBhI22Str++XWcErO/bALvHCuhv33owZW/CjH8KAFLZDCmu3727sihe0wTxpDhyGc6M8qacQ==}
+    dev: false
 
   /picocolors/1.0.0:
     resolution: {integrity: sha512-1fygroTLlHu66zi26VoTDv8yRgm0Fccecssto+MhsZ0D/DGW2sm8E8AjW7NU5VVTRt5GxbeZ5qBuJr+HyLYkjQ==}
@@ -2120,6 +2142,16 @@ packages:
     resolution: {integrity: sha512-qoRRSyROncaz1z0mvYqIE4lCd9p2R90i6GxW3uZv5ucSu8tU7B5HXUP1gG8pVZsYNVaXjk8ClXHPttLyxAL48A==}
     dev: false
 
+  /stream-chain/2.2.5:
+    resolution: {integrity: sha512-1TJmBx6aSWqZ4tx7aTpBDXK0/e2hhcNSTV8+CbFJtDjbb+I1mZ8lHit0Grw9GRT+6JbIrrDd8esncgBi8aBXGA==}
+    dev: false
+
+  /stream-json/1.7.5:
+    resolution: {integrity: sha512-NSkoVduGakxZ8a+pTPUlcGEeAGQpWL9rKJhOFCV+J/QtdQUEU5vtBgVg6eJXn8JB8RZvpbJWZGvXkhz70MLWoA==}
+    dependencies:
+      stream-chain: 2.2.5
+    dev: false
+
   /string-argv/0.3.1:
     resolution: {integrity: sha512-a1uQGz7IyVy9YwhqjZIZu1c8JO8dNIe20xBmSS6qu9kv++k3JGzCVmprbNN5Kn+BgzD5E7YYwg1CcjuJMRNsvg==}
     engines: {node: '>=0.6.19'}
@@ -2242,7 +2274,7 @@ packages:
       '@rollup/pluginutils': 5.0.2_rollup@3.9.1
       chalk: 5.2.0
       consola: 2.15.3
-      defu: 6.1.1
+      defu: 6.1.2
       esbuild: 0.15.18
       globby: 13.1.3
       hookable: 5.4.2

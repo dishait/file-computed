@@ -8,18 +8,18 @@ describe('fs', () => {
 	it('getFileModifyTimeStamp', async () => {
 		expect(
 			await getFileModifyTimeStamp('./package.json')
-		).toMatchInlineSnapshot('1674282579021')
+		).toMatchInlineSnapshot('1675086739472')
 	})
 
 	it('getFileModifyTimeStampSync', () => {
 		expect(
 			getFileModifyTimeStampSync('./package.json')
-		).toMatchInlineSnapshot('1674282579021')
+		).toMatchInlineSnapshot('1675086739472')
 	})
 
 	it('getFileModifyTimeStamp', async () => {
 		expect(
 			await getFileModifyTimeStamp('test/fixture')
-		).toMatchInlineSnapshot('1674285167158')
+		).toMatchInlineSnapshot('1674287259878')
 	})
 })

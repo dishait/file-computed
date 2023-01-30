@@ -65,6 +65,9 @@
     "destr": "^1.2.2",
     "m-type-tools": "^0.4.0",
     "ohash": "^1.0.0",
-    "unstorage": "^1.0.1"
+    "stream-json": "^1.7.5",
+    "unstorage": "^1.0.1",
+    "@types/stream-json": "^1.7.3",
+    "perfect-debounce": "^0.1.3"
   }
 }

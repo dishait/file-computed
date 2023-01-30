@@ -4,7 +4,8 @@ import {
 	createFsStorage,
 	createFsComputed,
 	createFsStorageSync,
-	createFsComputedSync
+	createFsComputedSync,
+	createFsComputedWithStream
 } from '../src'
 
 describe('createFsComputed', () => {
@@ -86,6 +87,25 @@ describe('createFsComputed', () => {
 		}
 
 		const result = await fsComputed(['test/fixture'], fn)
+
+		expect(result).toMatchInlineSnapshot('1')
+	})
+
+	it('stream', async () => {
+		const fsComputed = createFsComputedWithStream()
+
+		const fn = async () => {
+			let n =
+				((await fsStorage.getItem('n5')) as number) || 0
+			n++
+			await fsStorage.setItem('n5', n)
+			return n
+		}
+
+		const result = await fsComputed(
+			['test/fixture/bar.txt'],
+			fn
+		)
 
 		expect(result).toMatchInlineSnapshot('1')
 	})

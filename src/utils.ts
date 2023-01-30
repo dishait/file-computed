@@ -3,6 +3,11 @@ import {
 	hash as _hash,
 	murmurHash as _murmurHash
 } from 'ohash'
+import type {
+	AnyFunction,
+	AsyncFunciton,
+	UnPromiseReturnType
+} from 'm-type-tools'
 
 export const hash = mem(_hash)
 
@@ -31,5 +36,28 @@ export function diffModifyTimeStamps(
 	return {
 		changedIndexs,
 		changed: changedIndexs.length > 0
+	}
+}
+
+export function untilCheck() {
+	return new Promise(resolve => setImmediate(resolve))
+}
+
+export async function untilCheckScope<
+	T extends AnyFunction
+>(
+	fn: T,
+	fusing: AnyFunction
+): null | Promise<UnPromiseReturnType<T>> {
+	while (true) {
+		const result = await fn()
+		if (result) {
+			return result
+		}
+		const exit = await fusing()
+		if (exit) {
+			return null
+		}
+		await untilCheck()
 	}
 }
