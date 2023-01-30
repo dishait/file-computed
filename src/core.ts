@@ -30,16 +30,14 @@ import {
 	getFileModifyTimeStampSync
 } from './fs'
 
+// @ts-ignore
+import make from 'stream-json'
+// @ts-ignore
+import make2 from 'stream-json/streamers/streamArray'
 import * as StreamArray from 'stream-json/streamers/StreamArray'
-import { createRequire } from 'module'
 
-const require = createRequire(import.meta.url)
-
-const { parser } = require('stream-json')
-
-const {
-	streamArray
-} = require('stream-json/streamers/streamArray')
+const parser = make.parser
+const streamArray = make2.streamArray
 
 interface ICreateFsComputedOptions {
 	cachePath?: string
