@@ -58,8 +58,11 @@ export async function ensureFile(
 	await writeFile(path, content)
 }
 
-export function writeJsonFile(path: string, content: any) {
-	return writeFile(path, JSON.stringify(content, null, 2))
+export function writeJsonFile(
+	path: string,
+	content: string
+) {
+	return writeFile(path, content)
 }
 
 export const debouncedWriteJsonFile = debounce(

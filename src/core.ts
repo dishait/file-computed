@@ -26,6 +26,8 @@ import {
 	getFileModifyTimeStampSync
 } from './fs'
 
+import fastJson from 'fast-json-stringify'
+
 interface ICreateFsComputedOptions {
 	cachePath?: string
 }
@@ -322,6 +324,48 @@ export function createMetasSync(paths: string[]) {
 
 type StreamItem = IItem & { key: string }
 
+const stringify = fastJson({
+	title: 'StreamItemsSchema',
+	type: 'array',
+	items: {
+		anyOf: [
+			{
+				type: 'object',
+				properties: {
+					key: {
+						type: 'string'
+					},
+					result: {},
+					metas: {
+						type: 'array',
+						items: {
+							anyOf: [
+								{
+									type: 'object',
+									properties: {
+										path: {
+											type: 'string'
+										},
+										type: {
+											type: 'string'
+										},
+										hash: {
+											type: 'number'
+										},
+										modifyTimeStamp: {
+											type: 'number'
+										}
+									}
+								}
+							]
+						}
+					}
+				}
+			}
+		]
+	}
+})
+
 export function createFsComputedWithStream(
 	options: ICreateFsComputedOptions = {}
 ) {
@@ -370,7 +414,10 @@ export function createFsComputedWithStream(
 				result
 			})
 
-			await debouncedWriteJsonFile(itemsFile, items)
+			await debouncedWriteJsonFile(
+				itemsFile,
+				stringify(items)
+			)
 			return result
 		}
 		const { metas: oldMetas, result } = oldItem
@@ -387,7 +434,10 @@ export function createFsComputedWithStream(
 			oldItem.metas = newMetas
 			oldItem.result = newResult
 
-			await debouncedWriteJsonFile(itemsFile, items)
+			await debouncedWriteJsonFile(
+				itemsFile,
+				stringify(items)
+			)
 
 			return newResult as Value
 		}
