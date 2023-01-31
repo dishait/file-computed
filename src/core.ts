@@ -80,7 +80,7 @@ export function createFsComputed(
 
 		async function refresh() {
 			const newResult = await fn()
-			await storage.setItem(key, {
+			storage.setItem(key, {
 				result: newResult,
 				metas: newMetas
 			} as IItem)
@@ -434,10 +434,7 @@ export function createFsComputedWithStream(
 			oldItem.metas = newMetas
 			oldItem.result = newResult
 
-			await debouncedWriteJsonFile(
-				itemsFile,
-				stringify(items)
-			)
+			debouncedWriteJsonFile(itemsFile, stringify(items))
 
 			return newResult as Value
 		}
