@@ -6,12 +6,7 @@ import {
 	murmurHash,
 	untilCheckScope
 } from './utils'
-import {
-	lstatSync,
-	existsSync,
-	readFileSync,
-	createReadStream
-} from 'fs'
+import { lstatSync, existsSync, readFileSync } from 'fs'
 import { normalizeCachePath, normalizePath } from './path'
 import type {
 	AnyFunction,
@@ -26,18 +21,10 @@ import {
 import {
 	ensureFile,
 	debouncedWriteJsonFile,
+	readJsonFileWithStream,
 	getFileModifyTimeStamp,
 	getFileModifyTimeStampSync
 } from './fs'
-
-// @ts-ignore
-import make from 'stream-json'
-// @ts-ignore
-import make2 from 'stream-json/streamers/streamArray'
-import * as StreamArray from 'stream-json/streamers/StreamArray'
-
-const parser = make.parser
-const streamArray = make2.streamArray
 
 interface ICreateFsComputedOptions {
 	cachePath?: string
@@ -344,39 +331,34 @@ export function createFsComputedWithStream(
 		'items.json'
 	)
 
-	let stream: StreamArray
-	const items: StreamItem[] = []
+	let readed = false
+	let items: StreamItem[] = []
 
-	ensureFile(itemsFile, '[]').then(() => {
-		stream = createReadStream(itemsFile)
-			.pipe(parser())
-			.pipe(streamArray())
-			.on('data', v => {
-				items.push(v.value)
-			})
-
-		process.once('beforeExit', () => {
-			stream.removeAllListeners()
+	ensureFile(itemsFile, '[]')
+		.then(() => {
+			return readJsonFileWithStream<StreamItem[]>(itemsFile)
 		})
-	})
+		.then(_items => {
+			readed = true
+			items = _items
+		})
 
 	async function computed<T extends AnyFunction>(
 		paths: MayBeArray<string>,
 		fn: T
 	): Promise<UnPromiseReturnType<T>> {
 		type Value = UnPromiseReturnType<T>
+		await untilCheckScope(() => readed)
 
 		if (!isArray(paths)) {
 			paths = [paths]
 		}
 
 		const key = hash([paths, fn])
-		const oldItem = await untilCheckScope(
-			() => items.find(item => item.key === key),
-			() => stream?.closed
-		)
 
-		if (oldItem === null) {
+		const oldItem = items.find(item => key === item.key)
+
+		if (oldItem === undefined) {
 			const { metas, loadExistsFileHashs } =
 				await createMetas(paths)
 			await loadExistsFileHashs()
