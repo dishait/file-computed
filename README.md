@@ -51,7 +51,7 @@ result // 10000
 import { createFsComputed } from 'file-computed'
 
 const fsComputed = createFsComputed({
-	cachePath: 'temp' // 默认为最近 node_modules 的 .file-computed
+	cachePath: 'temp' // 默认为最近 node_modules 的 .cache/.file-computed
 })
 ```
 
