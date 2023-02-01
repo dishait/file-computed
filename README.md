@@ -78,6 +78,30 @@ result // 10000
 ```
 
 <br />
+
+### 流
+
+适合大型缓存
+
+```ts
+import { createFsComputedWithStream } from 'file-computed'
+
+const fsComputed = createFsComputedWithStream()
+
+const result = await fsComputed(() => {
+	/** 模拟复杂计算，只会跑一次，后边会直接获取缓存中的结果 */
+	let n = 0
+	let t = 10000
+	while (t--) {
+		n++
+	}
+	return n
+})
+
+result // 10000
+```
+
+<br />
 <br />
 
 ## License
