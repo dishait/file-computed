@@ -62,6 +62,7 @@
     "vitest": "^0.26.3"
   },
   "dependencies": {
+    "consola": "^2.15.3",
     "destr": "^1.2.2",
     "fast-json-stringify": "^5.5.0",
     "m-type-tools": "^0.4.0",

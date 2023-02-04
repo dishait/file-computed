@@ -4,6 +4,7 @@ import {
 	hash as _hash,
 	murmurHash as _murmurHash
 } from 'ohash'
+import consola from 'consola'
 
 export const hash = mem(_hash)
 
@@ -48,3 +49,5 @@ export async function untilCheckScope(fusing: AnyFunction) {
 		await untilCheck()
 	}
 }
+
+export const log = consola.withTag('file-computed')

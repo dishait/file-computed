@@ -1,6 +1,7 @@
 import { isArray } from 'm-type-tools'
 import { lstat, readFile } from 'fs/promises'
 import {
+	log,
 	hash,
 	parallel,
 	murmurHash,
@@ -19,6 +20,7 @@ import {
 } from './storage'
 
 import {
+	exists,
 	ensureFile,
 	debouncedWriteJsonFile,
 	readJsonFileWithStream,
@@ -232,7 +234,8 @@ export async function createMetas(paths: string[]) {
 	const metas = (await parallel(
 		paths.map(async (path, index) => {
 			path = normalizePath(path)
-			if (!existsSync(path)) {
+			if (!(await exists(path))) {
+				log.warn(`the ${path} does not exist`)
 				return {
 					path,
 					hash: 0,
@@ -283,6 +286,7 @@ export function createMetasSync(paths: string[]) {
 	const metas = paths.map((path, index) => {
 		path = normalizePath(path)
 		if (!existsSync(path)) {
+			log.warn(`the ${path} does not exist`)
 			return {
 				path,
 				hash: 0,
