@@ -148,7 +148,7 @@ export function createFsComputedSync(
 			paths = [paths]
 		}
 
-		const key = hash(paths)
+		const key = hash([paths, fn])
 		const oldItem = storage.getItem(key) as IItem
 
 		if (!oldItem) {
