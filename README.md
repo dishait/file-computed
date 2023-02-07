@@ -64,7 +64,7 @@ import { createFsComputedSync } from 'file-computed'
 
 const fsComputed = createFsComputedSync()
 
-const result = fsComputed(() => {
+const result = fsComputed('package.json', () => {
 	/** 模拟复杂计算，只会跑一次，后边会直接获取缓存中的结果 */
 	let n = 0
 	let t = 10000
@@ -88,7 +88,7 @@ import { createFsComputedWithStream } from 'file-computed'
 
 const fsComputed = createFsComputedWithStream()
 
-const result = await fsComputed(() => {
+const result = await fsComputed('package.json', () => {
 	/** 模拟复杂计算，只会跑一次，后边会直接获取缓存中的结果 */
 	let n = 0
 	let t = 10000
