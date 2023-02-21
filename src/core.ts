@@ -12,6 +12,7 @@ import {
   readJsonFileWithStream,
 } from "./fs";
 
+import { asyncExitHook } from "exit-hook";
 import { createHooks } from "hookable";
 import type { Hookable } from "hookable";
 import { isArray } from "m-type-tools";
@@ -21,6 +22,9 @@ import { existsSync, lstatSync, readFileSync } from "fs";
 import { normalizeCachePath, normalizePath } from "./path";
 import { createFsStorage, createFsStorageSync } from "./storage";
 import { hash, log, murmurHash, parallel, untilCheckScope } from "./utils";
+
+// 缓冲如果 1.5 秒内没有写完，则不写缓存了
+const BeforeExitMinimumWait = 1500;
 
 interface ICreateFsComputedOptions {
   cachePath?: string;
@@ -39,10 +43,12 @@ interface IItem {
 
 let hooks: Hookable;
 
-process.once("beforeExit", async () => {
+asyncExitHook(async () => {
   if (hooks) {
     await hooks.callHookParallel("setItem");
   }
+}, {
+  minimumWait: BeforeExitMinimumWait,
 });
 
 export function createFsComputed(
@@ -420,8 +426,8 @@ export function createFsComputedWithStream(
   }
 
   if (beforeExit) {
-    process.once("beforeExit", () => {
-      return debouncedWriteJsonFile(itemsFile, stringify(items));
+    asyncExitHook(() => debouncedWriteJsonFile(itemsFile, stringify(items)), {
+      minimumWait: BeforeExitMinimumWait,
     });
   }
 
