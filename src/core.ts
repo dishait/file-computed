@@ -1,480 +1,527 @@
-import { isArray } from 'm-type-tools'
-import { lstat, readFile } from 'fs/promises'
-import {
-	log,
-	hash,
-	parallel,
-	murmurHash,
-	untilCheckScope
-} from './utils'
-import { lstatSync, existsSync, readFileSync } from 'fs'
-import { normalizeCachePath, normalizePath } from './path'
 import type {
-	AnyFunction,
-	MayBeArray,
-	UnPromiseReturnType
-} from 'm-type-tools'
+  AnyFunction,
+  MayBeArray,
+  UnPromiseReturnType,
+} from "m-type-tools";
 import {
-	createFsStorage,
-	createFsStorageSync
-} from './storage'
+  debouncedWriteJsonFile,
+  ensureFile,
+  exists,
+  getFileModifyTimeStamp,
+  getFileModifyTimeStampSync,
+  readJsonFileWithStream,
+} from "./fs";
 
-import {
-	exists,
-	ensureFile,
-	debouncedWriteJsonFile,
-	readJsonFileWithStream,
-	getFileModifyTimeStamp,
-	getFileModifyTimeStampSync
-} from './fs'
-
-import fastJson from 'fast-json-stringify'
+import { createHooks } from "hookable";
+import type { Hookable } from "hookable";
+import { isArray } from "m-type-tools";
+import fastJson from "fast-json-stringify";
+import { lstat, readFile } from "fs/promises";
+import { existsSync, lstatSync, readFileSync } from "fs";
+import { normalizeCachePath, normalizePath } from "./path";
+import { createFsStorage, createFsStorageSync } from "./storage";
+import { hash, log, murmurHash, parallel, untilCheckScope } from "./utils";
 
 interface ICreateFsComputedOptions {
-	cachePath?: string
+  cachePath?: string;
+  beforeExit?: boolean;
 }
 
 interface IItem {
-	result: any
-	metas: Array<{
-		path: string
-		hash: number
-		type: 'file' | 'dir'
-		modifyTimeStamp: number
-	}>
+  result: any;
+  metas: Array<{
+    path: string;
+    hash: number;
+    type: "file" | "dir";
+    modifyTimeStamp: number;
+  }>;
 }
 
+let hooks: Hookable;
+
+process.once("beforeExit", async () => {
+  if (hooks) {
+    await hooks.callHookParallel("setItem");
+  }
+});
+
 export function createFsComputed(
-	options: ICreateFsComputedOptions = {}
+  options: ICreateFsComputedOptions = {},
 ) {
-	const { cachePath } = options
-	const storage = createFsStorage(cachePath)
+  const { cachePath, beforeExit = false } = options;
+  const storage = createFsStorage(cachePath);
 
-	async function computed<T extends AnyFunction>(
-		paths: MayBeArray<string>,
-		fn: T
-	): Promise<UnPromiseReturnType<T>> {
-		type Value = UnPromiseReturnType<T>
+  hooks ??= beforeExit ? createHooks() : null;
 
-		if (!isArray(paths)) {
-			paths = [paths]
-		}
+  async function computed<T extends AnyFunction>(
+    paths: MayBeArray<string>,
+    fn: T,
+  ): Promise<UnPromiseReturnType<T>> {
+    type Value = UnPromiseReturnType<T>;
 
-		const key = hash([paths, fn])
-		const oldItem = (await storage.getItem(key)) as IItem
+    if (!isArray(paths)) {
+      paths = [paths];
+    }
 
-		if (!oldItem) {
-			const { metas, loadExistsFileHashs } =
-				await createMetas(paths)
-			await loadExistsFileHashs()
-			const result = await fn()
-			await storage.setItem(key, { result, metas })
-			return result
-		}
+    const key = hash([paths, fn]);
+    const oldItem = (await storage.getItem(key)) as IItem;
 
-		const { metas: oldMetas, result } = oldItem
+    if (!oldItem) {
+      const { metas, loadExistsFileHashs } = await createMetas(paths);
+      await loadExistsFileHashs();
+      const result = await fn();
 
-		const {
-			metas: newMetas,
-			loadExistsFileHashs,
-			existsFileIndexs
-		} = await createMetas(paths)
+      if (!beforeExit) {
+        await storage.setItem(key, { result, metas });
+      } else {
+        hooks.hookOnce(
+          "setItem",
+          () => storage.setItem(key, { result, metas }),
+        );
+      }
 
-		async function refresh() {
-			const newResult = await fn()
-			storage.setItem(key, {
-				result: newResult,
-				metas: newMetas
-			} as IItem)
+      return result;
+    }
 
-			return newResult as Value
-		}
+    const { metas: oldMetas, result } = oldItem;
 
-		// check mtime
-		const changedMeta = newMetas.find((newMeta, index) => {
-			const oldMeta = oldMetas[index]
-			return (
-				newMeta.modifyTimeStamp !== oldMeta.modifyTimeStamp
-			)
-		})
+    const {
+      metas: newMetas,
+      loadExistsFileHashs,
+      existsFileIndexs,
+    } = await createMetas(paths);
 
-		if (!changedMeta) {
-			return result as Value
-		}
+    async function refresh() {
+      const newResult = await fn();
 
-		await loadExistsFileHashs()
+      if (!beforeExit) {
+        storage.setItem(key, {
+          result: newResult,
+          metas: newMetas,
+        } as IItem);
+      } else {
+        hooks.hookOnce(
+          "setItem",
+          () =>
+            storage.setItem(key, {
+              result: newResult,
+              metas: newMetas,
+            } as IItem),
+        );
+      }
 
-		// if dir modifyTimeStamp changed
-		if (changedMeta.type === 'dir') {
-			return (await refresh()) as Value
-		}
+      return newResult as Value;
+    }
 
-		// check hash
-		const changed = existsFileIndexs.some(index => {
-			const oldMetaHash = oldMetas[index].hash
-			const newMetaHash = newMetas[index].hash
-			return oldMetaHash !== newMetaHash
-		})
+    // check mtime
+    const changedMeta = newMetas.find((newMeta, index) => {
+      const oldMeta = oldMetas[index];
+      return (
+        newMeta.modifyTimeStamp !== oldMeta.modifyTimeStamp
+      );
+    });
 
-		if (!changed) {
-			return result as Value
-		}
+    if (!changedMeta) {
+      return result as Value;
+    }
 
-		return (await refresh()) as Value
-	}
+    await loadExistsFileHashs();
 
-	computed.remove = async function (key: string) {
-		await storage.removeItem(key)
-	}
+    // if dir modifyTimeStamp changed
+    if (changedMeta.type === "dir") {
+      return (await refresh()) as Value;
+    }
 
-	computed.clear = async function () {
-		await storage.clear()
-	}
+    // check hash
+    const changed = existsFileIndexs.some((index) => {
+      const oldMetaHash = oldMetas[index].hash;
+      const newMetaHash = newMetas[index].hash;
+      return oldMetaHash !== newMetaHash;
+    });
 
-	return computed
+    if (!changed) {
+      return result as Value;
+    }
+
+    return (await refresh()) as Value;
+  }
+
+  computed.remove = async function (key: string) {
+    await storage.removeItem(key);
+  };
+
+  computed.clear = async function () {
+    await storage.clear();
+  };
+
+  return computed;
 }
 
 export function createFsComputedSync(
-	options: ICreateFsComputedOptions = {}
+  options: ICreateFsComputedOptions = {},
 ) {
-	const { cachePath } = options
-	const storage = createFsStorageSync(cachePath)
+  const { cachePath, beforeExit = false } = options;
+  const storage = createFsStorageSync(cachePath);
 
-	function computed<T extends AnyFunction>(
-		paths: MayBeArray<string>,
-		fn: T
-	): ReturnType<T> {
-		type Value = ReturnType<T>
+  hooks ??= beforeExit ? createHooks() : null;
 
-		if (!isArray(paths)) {
-			paths = [paths]
-		}
+  function computed<T extends AnyFunction>(
+    paths: MayBeArray<string>,
+    fn: T,
+  ): ReturnType<T> {
+    type Value = ReturnType<T>;
 
-		const key = hash([paths, fn])
-		const oldItem = storage.getItem(key) as IItem
+    if (!isArray(paths)) {
+      paths = [paths];
+    }
 
-		if (!oldItem) {
-			const { metas, loadExistsFileHashs } =
-				createMetasSync(paths)
+    const key = hash([paths, fn]);
+    const oldItem = storage.getItem(key) as IItem;
 
-			loadExistsFileHashs()
+    if (!oldItem) {
+      const { metas, loadExistsFileHashs } = createMetasSync(paths);
 
-			const result = fn()
-			storage.setItem(key, {
-				result,
-				metas
-			})
+      loadExistsFileHashs();
 
-			return result as Value
-		}
+      const result = fn();
+      if (!beforeExit) {
+        storage.setItem(key, {
+          result,
+          metas,
+        });
+      } else {
+        hooks.hookOnce("setItem", () =>
+          storage.setItem(key, {
+            result,
+            metas,
+          }));
+      }
 
-		const { metas: oldMetas, result } = oldItem
+      return result as Value;
+    }
 
-		const {
-			metas: newMetas,
-			existsFileIndexs,
-			loadExistsFileHashs
-		} = createMetasSync(paths)
+    const { metas: oldMetas, result } = oldItem;
 
-		function refresh() {
-			const newResult = fn()
-			storage.setItem(key, {
-				result: newResult,
-				metas: newMetas
-			} as IItem)
+    const {
+      metas: newMetas,
+      existsFileIndexs,
+      loadExistsFileHashs,
+    } = createMetasSync(paths);
 
-			return newResult as Value
-		}
+    function refresh() {
+      const newResult = fn();
 
-		const changedMeta = newMetas.find((newMeta, index) => {
-			const oldMeta = oldMetas[index]
-			return (
-				newMeta.modifyTimeStamp !== oldMeta.modifyTimeStamp
-			)
-		})
+      if (!beforeExit) {
+        storage.setItem(key, {
+          result: newResult,
+          metas: newMetas,
+        } as IItem);
+      } else {
+        hooks.hookOnce("setItem", () =>
+          storage.setItem(key, {
+            result: newResult,
+            metas: newMetas,
+          } as IItem));
+      }
 
-		if (!changedMeta) {
-			return result as Value
-		}
+      return newResult as Value;
+    }
 
-		loadExistsFileHashs()
+    const changedMeta = newMetas.find((newMeta, index) => {
+      const oldMeta = oldMetas[index];
+      return (
+        newMeta.modifyTimeStamp !== oldMeta.modifyTimeStamp
+      );
+    });
 
-		// if dir modifyTimeStamp changed
-		if (changedMeta.type === 'dir') {
-			return refresh() as Value
-		}
+    if (!changedMeta) {
+      return result as Value;
+    }
 
-		const changed = existsFileIndexs.some(index => {
-			const oldMetaHash = oldMetas[index].hash
-			const newMetaHash = newMetas[index].hash
-			return oldMetaHash !== newMetaHash
-		})
+    loadExistsFileHashs();
 
-		if (!changed) {
-			return result as Value
-		}
+    // if dir modifyTimeStamp changed
+    if (changedMeta.type === "dir") {
+      return refresh() as Value;
+    }
 
-		return refresh() as Value
-	}
+    const changed = existsFileIndexs.some((index) => {
+      const oldMetaHash = oldMetas[index].hash;
+      const newMetaHash = newMetas[index].hash;
+      return oldMetaHash !== newMetaHash;
+    });
 
-	computed.remove = function (key: string) {
-		storage.removeItem(key)
-	}
+    if (!changed) {
+      return result as Value;
+    }
 
-	computed.clear = function () {
-		storage.clear()
-	}
+    return refresh() as Value;
+  }
 
-	return computed
+  computed.remove = function (key: string) {
+    storage.removeItem(key);
+  };
+
+  computed.clear = function () {
+    storage.clear();
+  };
+
+  return computed;
+}
+
+type StreamItem = IItem & { key: string };
+
+const stringify = fastJson({
+  title: "StreamItemsSchema",
+  type: "array",
+  items: {
+    anyOf: [
+      {
+        type: "object",
+        properties: {
+          key: {
+            type: "string",
+          },
+          result: {},
+          metas: {
+            type: "array",
+            items: {
+              anyOf: [
+                {
+                  type: "object",
+                  properties: {
+                    path: {
+                      type: "string",
+                    },
+                    type: {
+                      type: "string",
+                    },
+                    hash: {
+                      type: "number",
+                    },
+                    modifyTimeStamp: {
+                      type: "number",
+                    },
+                  },
+                },
+              ],
+            },
+          },
+        },
+      },
+    ],
+  },
+});
+
+export function createFsComputedWithStream(
+  options: ICreateFsComputedOptions = {},
+) {
+  const { cachePath, beforeExit = false } = options;
+  const itemsFile = normalizePath(
+    normalizeCachePath(cachePath),
+    "items.json",
+  );
+
+  let readed = false;
+  let items: StreamItem[] = [];
+
+  ensureFile(itemsFile, "[]")
+    .then(() => {
+      return readJsonFileWithStream<StreamItem[]>(itemsFile);
+    })
+    .then((_items) => {
+      readed = true;
+      items = _items;
+    });
+
+  async function computed<T extends AnyFunction>(
+    paths: MayBeArray<string>,
+    fn: T,
+  ): Promise<UnPromiseReturnType<T>> {
+    type Value = UnPromiseReturnType<T>;
+    await untilCheckScope(() => readed);
+
+    if (!isArray(paths)) {
+      paths = [paths];
+    }
+
+    const key = hash([paths, fn]);
+
+    const oldItem = items.find((item) => key === item.key);
+
+    if (oldItem === undefined) {
+      const { metas, loadExistsFileHashs } = await createMetas(paths);
+      await loadExistsFileHashs();
+      const result = await fn();
+
+      items.push({
+        key,
+        metas,
+        result,
+      });
+
+      if (!beforeExit) {
+        await debouncedWriteJsonFile(itemsFile, stringify(items));
+      }
+      return result;
+    }
+    const { metas: oldMetas, result } = oldItem;
+
+    const {
+      metas: newMetas,
+      loadExistsFileHashs,
+      existsFileIndexs,
+    } = await createMetas(paths);
+
+    async function refresh() {
+      const newResult = await fn();
+
+      oldItem.metas = newMetas;
+      oldItem.result = newResult;
+
+      if (!beforeExit) {
+        debouncedWriteJsonFile(itemsFile, stringify(items));
+      }
+
+      return newResult as Value;
+    }
+
+    // check mtime
+    const changedMeta = newMetas.find((newMeta, index) => {
+      const oldMeta = oldMetas[index];
+      return (
+        newMeta.modifyTimeStamp !== oldMeta.modifyTimeStamp
+      );
+    });
+
+    if (!changedMeta) {
+      return result as Value;
+    }
+
+    await loadExistsFileHashs();
+
+    // if dir modifyTimeStamp changed
+    if (changedMeta.type === "dir") {
+      return (await refresh()) as Value;
+    }
+
+    // check hash
+    const changed = existsFileIndexs.some((index) => {
+      const oldMetaHash = oldMetas[index].hash;
+      const newMetaHash = newMetas[index].hash;
+      return oldMetaHash !== newMetaHash;
+    });
+
+    if (!changed) {
+      return result as Value;
+    }
+
+    return (await refresh()) as Value;
+  }
+
+  if (beforeExit) {
+    process.once("beforeExit", () => {
+      return debouncedWriteJsonFile(itemsFile, stringify(items));
+    });
+  }
+
+  return computed;
 }
 
 export async function createMetas(paths: string[]) {
-	const existsFileIndexs: number[] = []
+  const existsFileIndexs: number[] = [];
 
-	const metas = (await parallel(
-		paths.map(async (path, index) => {
-			path = normalizePath(path)
-			if (!(await exists(path))) {
-				log.warn(`the ${path} does not exist`)
-				return {
-					path,
-					hash: 0,
-					type: 'file',
-					modifyTimeStamp: 0
-				}
-			}
-			const stat = await lstat(path)
+  const metas = (await parallel(
+    paths.map(async (path, index) => {
+      path = normalizePath(path);
+      if (!(await exists(path))) {
+        log.warn(`the ${path} does not exist`);
+        return {
+          path,
+          hash: 0,
+          type: "file",
+          modifyTimeStamp: 0,
+        };
+      }
+      const stat = await lstat(path);
 
-			const modifyTimeStamp = await getFileModifyTimeStamp(
-				path
-			)
-			if (stat.isDirectory()) {
-				return {
-					path,
-					hash: 0,
-					type: 'dir',
-					modifyTimeStamp
-				}
-			}
+      const modifyTimeStamp = await getFileModifyTimeStamp(
+        path,
+      );
+      if (stat.isDirectory()) {
+        return {
+          path,
+          hash: 0,
+          type: "dir",
+          modifyTimeStamp,
+        };
+      }
 
-			existsFileIndexs.push(index)
+      existsFileIndexs.push(index);
 
-			return {
-				path,
-				type: 'file',
-				modifyTimeStamp
-			}
-		})
-	)) as IItem['metas']
+      return {
+        path,
+        type: "file",
+        modifyTimeStamp,
+      };
+    }),
+  )) as IItem["metas"];
 
-	function loadExistsFileHashs() {
-		return parallel(
-			existsFileIndexs.map(async existsFileIndex => {
-				metas[existsFileIndex]['hash'] = murmurHash(
-					await readFile(metas[existsFileIndex]['path'])
-				)
-			})
-		)
-	}
+  function loadExistsFileHashs() {
+    return parallel(
+      existsFileIndexs.map(async (existsFileIndex) => {
+        metas[existsFileIndex]["hash"] = murmurHash(
+          await readFile(metas[existsFileIndex]["path"]),
+        );
+      }),
+    );
+  }
 
-	return { metas, loadExistsFileHashs, existsFileIndexs }
+  return { metas, loadExistsFileHashs, existsFileIndexs };
 }
 
 export function createMetasSync(paths: string[]) {
-	const existsFileIndexs: number[] = []
+  const existsFileIndexs: number[] = [];
 
-	const metas = paths.map((path, index) => {
-		path = normalizePath(path)
-		if (!existsSync(path)) {
-			log.warn(`the ${path} does not exist`)
-			return {
-				path,
-				hash: 0,
-				type: 'file',
-				modifyTimeStamp: 0
-			}
-		}
-		const stat = lstatSync(path)
+  const metas = paths.map((path, index) => {
+    path = normalizePath(path);
+    if (!existsSync(path)) {
+      log.warn(`the ${path} does not exist`);
+      return {
+        path,
+        hash: 0,
+        type: "file",
+        modifyTimeStamp: 0,
+      };
+    }
+    const stat = lstatSync(path);
 
-		const modifyTimeStamp = getFileModifyTimeStampSync(path)
-		if (stat.isDirectory()) {
-			return {
-				path,
-				hash: 0,
-				type: 'dir',
-				modifyTimeStamp
-			}
-		}
+    const modifyTimeStamp = getFileModifyTimeStampSync(path);
+    if (stat.isDirectory()) {
+      return {
+        path,
+        hash: 0,
+        type: "dir",
+        modifyTimeStamp,
+      };
+    }
 
-		existsFileIndexs.push(index)
+    existsFileIndexs.push(index);
 
-		return {
-			path,
-			type: 'file',
-			modifyTimeStamp
-		}
-	}) as IItem['metas']
+    return {
+      path,
+      type: "file",
+      modifyTimeStamp,
+    };
+  }) as IItem["metas"];
 
-	function loadExistsFileHashs() {
-		existsFileIndexs.forEach(async existsFileIndex => {
-			metas[existsFileIndex]['hash'] = murmurHash(
-				readFileSync(metas[existsFileIndex]['path'])
-			)
-		})
-	}
+  function loadExistsFileHashs() {
+    existsFileIndexs.forEach(async (existsFileIndex) => {
+      metas[existsFileIndex]["hash"] = murmurHash(
+        readFileSync(metas[existsFileIndex]["path"]),
+      );
+    });
+  }
 
-	return { metas, loadExistsFileHashs, existsFileIndexs }
-}
-
-type StreamItem = IItem & { key: string }
-
-const stringify = fastJson({
-	title: 'StreamItemsSchema',
-	type: 'array',
-	items: {
-		anyOf: [
-			{
-				type: 'object',
-				properties: {
-					key: {
-						type: 'string'
-					},
-					result: {},
-					metas: {
-						type: 'array',
-						items: {
-							anyOf: [
-								{
-									type: 'object',
-									properties: {
-										path: {
-											type: 'string'
-										},
-										type: {
-											type: 'string'
-										},
-										hash: {
-											type: 'number'
-										},
-										modifyTimeStamp: {
-											type: 'number'
-										}
-									}
-								}
-							]
-						}
-					}
-				}
-			}
-		]
-	}
-})
-
-export function createFsComputedWithStream(
-	options: ICreateFsComputedOptions = {}
-) {
-	const { cachePath } = options
-	const itemsFile = normalizePath(
-		normalizeCachePath(cachePath),
-		'items.json'
-	)
-
-	let readed = false
-	let items: StreamItem[] = []
-
-	ensureFile(itemsFile, '[]')
-		.then(() => {
-			return readJsonFileWithStream<StreamItem[]>(itemsFile)
-		})
-		.then(_items => {
-			readed = true
-			items = _items
-		})
-
-	async function computed<T extends AnyFunction>(
-		paths: MayBeArray<string>,
-		fn: T
-	): Promise<UnPromiseReturnType<T>> {
-		type Value = UnPromiseReturnType<T>
-		await untilCheckScope(() => readed)
-
-		if (!isArray(paths)) {
-			paths = [paths]
-		}
-
-		const key = hash([paths, fn])
-
-		const oldItem = items.find(item => key === item.key)
-
-		if (oldItem === undefined) {
-			const { metas, loadExistsFileHashs } =
-				await createMetas(paths)
-			await loadExistsFileHashs()
-			const result = await fn()
-
-			items.push({
-				key,
-				metas,
-				result
-			})
-
-			await debouncedWriteJsonFile(
-				itemsFile,
-				stringify(items)
-			)
-			return result
-		}
-		const { metas: oldMetas, result } = oldItem
-
-		const {
-			metas: newMetas,
-			loadExistsFileHashs,
-			existsFileIndexs
-		} = await createMetas(paths)
-
-		async function refresh() {
-			const newResult = await fn()
-
-			oldItem.metas = newMetas
-			oldItem.result = newResult
-
-			debouncedWriteJsonFile(itemsFile, stringify(items))
-
-			return newResult as Value
-		}
-
-		// check mtime
-		const changedMeta = newMetas.find((newMeta, index) => {
-			const oldMeta = oldMetas[index]
-			return (
-				newMeta.modifyTimeStamp !== oldMeta.modifyTimeStamp
-			)
-		})
-
-		if (!changedMeta) {
-			return result as Value
-		}
-
-		await loadExistsFileHashs()
-
-		// if dir modifyTimeStamp changed
-		if (changedMeta.type === 'dir') {
-			return (await refresh()) as Value
-		}
-
-		// check hash
-		const changed = existsFileIndexs.some(index => {
-			const oldMetaHash = oldMetas[index].hash
-			const newMetaHash = newMetas[index].hash
-			return oldMetaHash !== newMetaHash
-		})
-
-		if (!changed) {
-			return result as Value
-		}
-
-		return (await refresh()) as Value
-	}
-
-	return computed
+  return { metas, loadExistsFileHashs, existsFileIndexs };
 }

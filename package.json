@@ -20,14 +20,11 @@
     "dist"
   ],
   "scripts": {
-    "test": "vitest",
     "build": "unbuild",
+    "test": "vitest --u",
     "dev": "pnpm run stub",
     "stub": "unbuild --stub",
     "play": "tsx src/index.ts",
-    "test:update": "vitest --u",
-    "test:watch": "vitest --watch",
-    "coverage": "vitest --coverage",
     "prepublishOnly": "npm run build",
     "build:watch": "npm run build -- --watch src",
     "release": "bumpp --commit --push --tag && npm publish"
@@ -63,6 +60,7 @@
   },
   "dependencies": {
     "consola": "^2.15.3",
+    "hookable": "^5.4.2",
     "destr": "^1.2.2",
     "fast-json-stringify": "^5.5.0",
     "m-type-tools": "^0.4.0",
