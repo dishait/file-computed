@@ -101,6 +101,31 @@ const result = await fsComputed('package.json', () => {
 result // 10000
 ```
 
+#### 后置写
+
+开启 `post`，结果将优先返回，速度更快
+
+```ts
+import { createFsComputedWithStream } from 'file-computed'
+
+const fsComputed = createFsComputedWithStream({
+	post: true
+})
+
+const result = await fsComputed('package.json', () => {
+	let n = 0
+	let t = 10000
+	while (t--) {
+		n++
+	}
+	return n
+})
+
+result // 写被后置了，结果 10000 优先返回
+```
+
+因为写被后置了，所以下次计算前，缓存与否是不确定的
+
 <br />
 <br />
 

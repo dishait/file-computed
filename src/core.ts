@@ -21,7 +21,14 @@ import { createFsStorage, createFsStorageSync } from "./storage";
 import { hash, log, murmurHash, parallel, untilCheckScope } from "./utils";
 
 interface ICreateFsComputedOptions {
+  /**
+   * @default node_modules/.cache/.file-computed
+   */
   cachePath?: string;
+  /**
+   * @default false
+   */
+  post?: boolean;
 }
 
 interface IItem {
@@ -37,7 +44,7 @@ interface IItem {
 export function createFsComputed(
   options: ICreateFsComputedOptions = {},
 ) {
-  const { cachePath } = options;
+  const { cachePath, post = false } = options;
   const storage = createFsStorage(cachePath);
 
   async function computed<T extends AnyFunction>(
@@ -58,7 +65,11 @@ export function createFsComputed(
       await loadExistsFileHashs();
       const result = await fn();
 
-      await storage.setItem(key, { result, metas });
+      if (post) {
+        storage.setItem(key, { result, metas });
+      } else {
+        await storage.setItem(key, { result, metas });
+      }
 
       return result;
     }
@@ -74,10 +85,17 @@ export function createFsComputed(
     async function refresh() {
       const newResult = await fn();
 
-      storage.setItem(key, {
-        result: newResult,
-        metas: newMetas,
-      } as IItem);
+      if (post) {
+        storage.setItem(key, {
+          result: newResult,
+          metas: newMetas,
+        } as IItem);
+      } else {
+        await storage.setItem(key, {
+          result: newResult,
+          metas: newMetas,
+        } as IItem);
+      }
 
       return newResult as Value;
     }
@@ -127,7 +145,7 @@ export function createFsComputed(
 }
 
 export function createFsComputedSync(
-  options: ICreateFsComputedOptions = {},
+  options: Omit<ICreateFsComputedOptions, "post"> = {},
 ) {
   const { cachePath } = options;
   const storage = createFsStorageSync(cachePath);
@@ -267,7 +285,7 @@ const stringify = fastJson({
 export function createFsComputedWithStream(
   options: ICreateFsComputedOptions = {},
 ) {
-  const { cachePath } = options;
+  const { cachePath, post = false } = options;
   const itemsFile = normalizePath(
     normalizeCachePath(cachePath),
     "items.json",
@@ -311,7 +329,11 @@ export function createFsComputedWithStream(
         result,
       });
 
-      await debouncedWriteJsonFile(itemsFile, stringify(items));
+      if (post) {
+        debouncedWriteJsonFile(itemsFile, stringify(items));
+      } else {
+        await debouncedWriteJsonFile(itemsFile, stringify(items));
+      }
 
       return result;
     }
@@ -329,7 +351,11 @@ export function createFsComputedWithStream(
       oldItem.metas = newMetas;
       oldItem.result = newResult;
 
-      debouncedWriteJsonFile(itemsFile, stringify(items));
+      if (post) {
+        debouncedWriteJsonFile(itemsFile, stringify(items));
+      } else {
+        await debouncedWriteJsonFile(itemsFile, stringify(items));
+      }
 
       return newResult as Value;
     }
