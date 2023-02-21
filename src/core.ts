@@ -12,9 +12,6 @@ import {
   readJsonFileWithStream,
 } from "./fs";
 
-import { asyncExitHook } from "exit-hook";
-import { createHooks } from "hookable";
-import type { Hookable } from "hookable";
 import { isArray } from "m-type-tools";
 import fastJson from "fast-json-stringify";
 import { lstat, readFile } from "fs/promises";
@@ -23,12 +20,8 @@ import { normalizeCachePath, normalizePath } from "./path";
 import { createFsStorage, createFsStorageSync } from "./storage";
 import { hash, log, murmurHash, parallel, untilCheckScope } from "./utils";
 
-// 缓冲如果 1.5 秒内没有写完，则不写缓存了
-const BeforeExitMinimumWait = 1500;
-
 interface ICreateFsComputedOptions {
   cachePath?: string;
-  beforeExit?: boolean;
 }
 
 interface IItem {
@@ -41,23 +34,11 @@ interface IItem {
   }>;
 }
 
-let hooks: Hookable;
-
-asyncExitHook(async () => {
-  if (hooks) {
-    await hooks.callHookParallel("setItem");
-  }
-}, {
-  minimumWait: BeforeExitMinimumWait,
-});
-
 export function createFsComputed(
   options: ICreateFsComputedOptions = {},
 ) {
-  const { cachePath, beforeExit = false } = options;
+  const { cachePath } = options;
   const storage = createFsStorage(cachePath);
-
-  hooks ??= beforeExit ? createHooks() : null;
 
   async function computed<T extends AnyFunction>(
     paths: MayBeArray<string>,
@@ -77,14 +58,7 @@ export function createFsComputed(
       await loadExistsFileHashs();
       const result = await fn();
 
-      if (!beforeExit) {
-        await storage.setItem(key, { result, metas });
-      } else {
-        hooks.hookOnce(
-          "setItem",
-          () => storage.setItem(key, { result, metas }),
-        );
-      }
+      await storage.setItem(key, { result, metas });
 
       return result;
     }
@@ -100,21 +74,10 @@ export function createFsComputed(
     async function refresh() {
       const newResult = await fn();
 
-      if (!beforeExit) {
-        storage.setItem(key, {
-          result: newResult,
-          metas: newMetas,
-        } as IItem);
-      } else {
-        hooks.hookOnce(
-          "setItem",
-          () =>
-            storage.setItem(key, {
-              result: newResult,
-              metas: newMetas,
-            } as IItem),
-        );
-      }
+      storage.setItem(key, {
+        result: newResult,
+        metas: newMetas,
+      } as IItem);
 
       return newResult as Value;
     }
@@ -166,10 +129,8 @@ export function createFsComputed(
 export function createFsComputedSync(
   options: ICreateFsComputedOptions = {},
 ) {
-  const { cachePath, beforeExit = false } = options;
+  const { cachePath } = options;
   const storage = createFsStorageSync(cachePath);
-
-  hooks ??= beforeExit ? createHooks() : null;
 
   function computed<T extends AnyFunction>(
     paths: MayBeArray<string>,
@@ -190,18 +151,10 @@ export function createFsComputedSync(
       loadExistsFileHashs();
 
       const result = fn();
-      if (!beforeExit) {
-        storage.setItem(key, {
-          result,
-          metas,
-        });
-      } else {
-        hooks.hookOnce("setItem", () =>
-          storage.setItem(key, {
-            result,
-            metas,
-          }));
-      }
+      storage.setItem(key, {
+        result,
+        metas,
+      });
 
       return result as Value;
     }
@@ -217,18 +170,10 @@ export function createFsComputedSync(
     function refresh() {
       const newResult = fn();
 
-      if (!beforeExit) {
-        storage.setItem(key, {
-          result: newResult,
-          metas: newMetas,
-        } as IItem);
-      } else {
-        hooks.hookOnce("setItem", () =>
-          storage.setItem(key, {
-            result: newResult,
-            metas: newMetas,
-          } as IItem));
-      }
+      storage.setItem(key, {
+        result: newResult,
+        metas: newMetas,
+      } as IItem);
 
       return newResult as Value;
     }
@@ -322,7 +267,7 @@ const stringify = fastJson({
 export function createFsComputedWithStream(
   options: ICreateFsComputedOptions = {},
 ) {
-  const { cachePath, beforeExit = false } = options;
+  const { cachePath } = options;
   const itemsFile = normalizePath(
     normalizeCachePath(cachePath),
     "items.json",
@@ -366,9 +311,8 @@ export function createFsComputedWithStream(
         result,
       });
 
-      if (!beforeExit) {
-        await debouncedWriteJsonFile(itemsFile, stringify(items));
-      }
+      await debouncedWriteJsonFile(itemsFile, stringify(items));
+
       return result;
     }
     const { metas: oldMetas, result } = oldItem;
@@ -385,9 +329,7 @@ export function createFsComputedWithStream(
       oldItem.metas = newMetas;
       oldItem.result = newResult;
 
-      if (!beforeExit) {
-        debouncedWriteJsonFile(itemsFile, stringify(items));
-      }
+      debouncedWriteJsonFile(itemsFile, stringify(items));
 
       return newResult as Value;
     }
@@ -423,12 +365,6 @@ export function createFsComputedWithStream(
     }
 
     return (await refresh()) as Value;
-  }
-
-  if (beforeExit) {
-    asyncExitHook(() => debouncedWriteJsonFile(itemsFile, stringify(items)), {
-      minimumWait: BeforeExitMinimumWait,
-    });
   }
 
   return computed;
