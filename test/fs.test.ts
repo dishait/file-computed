@@ -1,25 +1,22 @@
-import {
-	getFileModifyTimeStamp,
-	getFileModifyTimeStampSync
-} from '../src'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from "vitest";
+import { getMtime, getMtimeSync } from "../src";
 
-describe('fs', () => {
-	it('getFileModifyTimeStamp', async () => {
-		expect(
-			await getFileModifyTimeStamp('./package.json')
-		).toMatchInlineSnapshot('1675144039337')
-	})
+describe("fs", () => {
+  it("getMtime", async () => {
+    expect(
+      await getMtime("./package.json"),
+    ).toMatchInlineSnapshot("1675144039337");
+  });
 
-	it('getFileModifyTimeStampSync', () => {
-		expect(
-			getFileModifyTimeStampSync('./package.json')
-		).toMatchInlineSnapshot('1675144039337')
-	})
+  it("getMtimeSync", () => {
+    expect(
+      getMtimeSync("./package.json"),
+    ).toMatchInlineSnapshot("1675144039337");
+  });
 
-	it('getFileModifyTimeStamp', async () => {
-		expect(
-			await getFileModifyTimeStamp('test/fixture')
-		).toMatchInlineSnapshot('1675145560660')
-	})
-})
+  it("getMtime", async () => {
+    expect(
+      await getMtime("test/fixture"),
+    ).toMatchInlineSnapshot("1675145560660");
+  });
+});

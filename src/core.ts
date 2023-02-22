@@ -7,18 +7,18 @@ import {
   debouncedWriteJsonFile,
   ensureFile,
   exists,
-  getFileModifyTimeStamp,
-  getFileModifyTimeStampSync,
+  getMtime,
+  getMtimeSync,
   readJsonFileWithStream,
 } from "./fs";
 
 import { isArray } from "m-type-tools";
 import fastJson from "fast-json-stringify";
-import { lstat, readFile } from "fs/promises";
-import { existsSync, lstatSync, readFileSync } from "fs";
+import { lstat, readFile } from "node:fs/promises";
 import { normalizeCachePath, normalizePath } from "./path";
+import { existsSync, lstatSync, readFileSync } from "node:fs";
 import { createFsStorage, createFsStorageSync } from "./storage";
-import { hash, log, murmurHash, parallel, untilCheckScope } from "./utils";
+import { hash, log, murmurHash, untilCheckScope } from "./utils";
 
 interface ICreateFsComputedOptions {
   /**
@@ -399,7 +399,7 @@ export function createFsComputedWithStream(
 export async function createMetas(paths: string[]) {
   const existsFileIndexs: number[] = [];
 
-  const metas = (await parallel(
+  const metas = (await Promise.all(
     paths.map(async (path, index) => {
       path = normalizePath(path);
       if (!(await exists(path))) {
@@ -413,9 +413,7 @@ export async function createMetas(paths: string[]) {
       }
       const stat = await lstat(path);
 
-      const modifyTimeStamp = await getFileModifyTimeStamp(
-        path,
-      );
+      const modifyTimeStamp = await getMtime(path);
       if (stat.isDirectory()) {
         return {
           path,
@@ -436,7 +434,7 @@ export async function createMetas(paths: string[]) {
   )) as IItem["metas"];
 
   function loadExistsFileHashs() {
-    return parallel(
+    return Promise.all(
       existsFileIndexs.map(async (existsFileIndex) => {
         metas[existsFileIndex]["hash"] = murmurHash(
           await readFile(metas[existsFileIndex]["path"]),
@@ -464,7 +462,7 @@ export function createMetasSync(paths: string[]) {
     }
     const stat = lstatSync(path);
 
-    const modifyTimeStamp = getFileModifyTimeStampSync(path);
+    const modifyTimeStamp = getMtimeSync(path);
     if (stat.isDirectory()) {
       return {
         path,
