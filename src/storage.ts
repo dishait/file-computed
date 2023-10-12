@@ -1,7 +1,6 @@
 import destr from "destr";
 import { ensureDirSync } from "./fs";
 import { createStorage } from "unstorage";
-// @ts-ignore
 import fsDriver from "unstorage/drivers/fs";
 import { normalizeCachePath, normalizePath } from "./path";
 import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
