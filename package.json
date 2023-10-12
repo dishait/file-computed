@@ -1,5 +1,5 @@
 {
-  "version": "0.9.2",
+  "version": "0.9.3",
   "name": "file-computed",
   "description": "文件型计算属性，当且仅当文件变化时才重新做计算",
   "main": "./dist/index.cjs",
