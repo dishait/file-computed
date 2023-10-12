@@ -58,6 +58,7 @@
     "vitest": "^0.34.6"
   },
   "dependencies": {
+    "close-with-grace": "^1.2.0",
     "consola": "^3.2.3",
     "destr": "^2.0.1",
     "fast-json-stringify": "^5.8.0",

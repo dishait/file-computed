@@ -2,6 +2,7 @@ import destr from "destr";
 import { ensureDirSync } from "./fs";
 import { createStorage } from "unstorage";
 import fsDriver from "unstorage/drivers/fs";
+import closeWithGrace from "close-with-grace";
 import { normalizeCachePath, normalizePath } from "./path";
 import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 
@@ -12,7 +13,7 @@ export function createFsStorage(cachePath?: string) {
     }),
   });
 
-  process.once("beforeExit", async function () {
+  closeWithGrace({ delay: 500 }, async function () {
     await storage.dispose();
   });
 

@@ -1,13 +1,14 @@
 {
-	"compilerOptions": {
-		"module": "ESNext",
-		"target": "ES2015",
-		"incremental": true,
-		"types": ["vitest"],
-		"skipLibCheck": true,
-		"moduleResolution": "node",
-		"tsBuildInfoFile": ".tsbuildinfo"
-	},
-	"include": ["src"],
-	"exclude": ["dist", "node_modules"]
+  "compilerOptions": {
+    "module": "ESNext",
+    "target": "ES2015",
+    "incremental": true,
+    "types": ["vitest"],
+    "skipLibCheck": true,
+    "moduleResolution": "node",
+    "tsBuildInfoFile": ".tsbuildinfo",
+    "allowSyntheticDefaultImports": true
+  },
+  "include": ["src"],
+  "exclude": ["dist", "node_modules"]
 }
